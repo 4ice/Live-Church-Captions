@@ -17,7 +17,14 @@
   const viewerHint = document.getElementById('viewerHint');
   const viewerNotices = Array.from(document.querySelectorAll('[data-viewer-notice]'));
   const isPhonePage = document.body.classList.contains('phone-page');
-  const isPresentationPage = document.body.classList.contains('display-page') || document.body.classList.contains('obs-page');
+  const isRoomDisplayPage = document.body.classList.contains('display-page');
+  const isObsPage = document.body.classList.contains('obs-page');
+  // Room Display and OBS deliberately share one calmer presentation policy.
+  // Audience phones remain the fastest live reader and may show the mutable
+  // recognition tail; presentation outputs wait only for the server's existing
+  // local-agreement confirmation before exposing draft words.
+  const isPolishedPresentationPage = isRoomDisplayPage || isObsPage;
+  const isPresentationPage = isPolishedPresentationPage;
 
   const MAX_LIVE_SEGMENTS = 120;
   const MAX_TRANSCRIPT_ITEMS = 1000;
@@ -419,8 +426,7 @@
 
   function subtitleLimits() {
     const landscape = window.matchMedia('(orientation: landscape)').matches || window.innerWidth > window.innerHeight;
-    const presentationObs = document.body.classList.contains('obs-page');
-    const baseChars = isPresentationPage ? (presentationObs ? 42 : 50) : (landscape ? 52 : 42);
+    const baseChars = isPolishedPresentationPage ? 50 : (landscape ? 52 : 42);
     const estimatedLineHeight = current ? Math.max(24, parseFloat(getComputedStyle(current).lineHeight) || 30) : 30;
     const availableHeight = current ? Math.max(220, current.clientHeight - 24) : 300;
     const capacity = isPresentationPage ? 2 : Math.max(4, Math.floor(availableHeight / estimatedLineHeight));
@@ -448,6 +454,14 @@
     if (!/[\p{L}\p{N}]/u.test(cleaned)) return '';
     if (/^[\s.·•…\-–—_,;:!?|\/\\()[\]{}"'`~*+=<>]+$/.test(cleaned)) return '';
     return cleaned;
+  }
+
+  function polishedPresentationDraftText(text, stableWordCount) {
+    const cleaned = cleanCaptionText(text);
+    if (!cleaned || !isPolishedPresentationPage || viewerLanguage !== SOURCE_LANGUAGE) return cleaned;
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    const confirmedCount = Math.min(words.length, Math.max(0, Number(stableWordCount || 0)));
+    return confirmedCount ? words.slice(0, confirmedCount).join(' ') : '';
   }
 
   function captionContentAvailable() {
@@ -1165,7 +1179,14 @@
     const revision = Number(segment.cue_revision || segment.source_revision || 0);
     const stableWordCount = Number(segment.cue_stable_word_count || 0);
     if (unitId && unitId === currentDraftUnitId && revision && revision < currentDraftRevision) return;
-    const displayText = stripCommittedPrefix(text);
+    const presentationText = polishedPresentationDraftText(text, stableWordCount);
+    if (isPolishedPresentationPage && viewerLanguage === SOURCE_LANGUAGE && !presentationText) {
+      // Keep the last confirmed wording on screen while a new cue or corrected
+      // tail is still mutable. There is no browser timer and no extra decode.
+      renderSubtitleStack();
+      return;
+    }
+    const displayText = stripCommittedPrefix(presentationText);
     if (!displayText) {
       currentDraftText = '';
       currentDraftUnitId = null;
@@ -1220,7 +1241,10 @@
       showSystemMessageFromKey('sensitive_paused_message', state.current?.text || '');
       return;
     }
-    currentDraftText = state.current?.text ? stripCommittedPrefix(cleanCaptionText(state.current.text)) : '';
+    const stateText = state.current?.text
+      ? polishedPresentationDraftText(state.current.text, state.current.cue_stable_word_count)
+      : '';
+    currentDraftText = stateText ? stripCommittedPrefix(stateText) : '';
     currentDraftUnitId = state.current?.cue_id || state.current?.source_unit_id || null;
     currentDraftRevision = Number(state.current?.cue_revision || state.current?.source_revision || 0);
     currentDraftStableWordCount = Number(state.current?.cue_stable_word_count || 0);

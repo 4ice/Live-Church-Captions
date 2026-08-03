@@ -15,7 +15,7 @@ Write-Host "It avoids requiring a full system-wide CUDA Toolkit install for many
 Write-Host "The reinstall bypasses pip's cache so damaged or stale CUDA wheels are replaced."
 Write-Host ""
 
-& $VenvPython -m pip install --upgrade pip "setuptools<82" wheel
+& $VenvPython -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 
 Write-Host ""
 Write-Host "Removing existing local NVIDIA runtime wheels if present..."

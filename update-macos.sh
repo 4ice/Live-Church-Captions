@@ -309,6 +309,7 @@ fi
 
 if [[ -x "$APP_DIR/.venv/bin/python" ]]; then
   echo "Updating Python packages before replacing app files..."
+  "$APP_DIR/.venv/bin/python" -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
   "$APP_DIR/.venv/bin/python" -m pip install -r "$STAGE_DIR/requirements.txt"
   if [[ -f "$STAGE_DIR/requirements-translation.txt" ]]; then
     "$APP_DIR/.venv/bin/python" -m pip install -r "$STAGE_DIR/requirements-translation.txt"

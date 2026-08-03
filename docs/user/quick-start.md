@@ -1,6 +1,6 @@
 # Church Cap Quick Start Guide
 
-Version: v0.7.3
+Version: v0.7.4
 
 This guide is for the person setting up Church Cap for a church service.
 
@@ -32,7 +32,7 @@ Use **Benchmark** before selecting heavier models such as `small.en` or `medium.
 2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.3"
+cd "$HOME/Documents/Live-Church-Captions-0.7.4"
 ```
 
 3. Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
@@ -53,7 +53,7 @@ If setup asks whether to set the Mac hostname to `church-cap.local`, choose yes 
 2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.3"
+cd "$HOME\Documents\Live-Church-Captions-0.7.4"
 ```
 
 3. Run setup.
@@ -79,7 +79,7 @@ If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came fro
 Open a terminal, then go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.3"
+cd "$HOME/Documents/Live-Church-Captions-0.7.4"
 bash setup-linux.sh
 ```
 
@@ -199,7 +199,7 @@ Visitors automatically get the light or dark theme from their device settings. T
 - Use **Stop** when captions should stop.
 - Use **Blank / pause** before private prayer, pastoral details, testimony, safeguarding, or anything sensitive. While blanked, captions are not shown, retained in the session transcript, or included in transcript exports; Church Cap also flushes the live transcription buffer and drops a short buffered-audio window when captions resume. Audience phones show the blanked/resumed notice in the selected caption UI language where a local UI string or runtime UI translation is available.
 - Use **Resume** when public captions should continue.
-- Watch the microphone level meter to confirm audio is coming in.
+- Watch the microphone level meter to confirm audio is coming in. If the selected input opens but supplies exact digital silence for three seconds, Church Cap shows a non-blocking warning with macOS, Windows, or Linux guidance. The warning clears when real samples arrive.
 - Use the privacy controls to choose whether transcript history is saved and how long to keep it. A fresh app start begins with an empty visible session transcript; older saved transcript cache is pruned on startup using the retention window saved with that cache. **Open transcript folder** reveals the per-user local cache folder on the Church Cap computer. **Export TXT/VTT/SRT/JSON** downloads the current-session transcript only and asks the operator to confirm the privacy warning first. Clearing the transcript deletes the retained local transcript cache.
 
 ## Service Leader Controls
@@ -281,8 +281,12 @@ Use the Android/IP fallback QR code on the operator page. Also check that the ph
 ### No audio devices appear
 
 - Check the USB audio interface is connected.
-- Check macOS microphone permissions.
+- On macOS, the built-in MacBook microphone may be unavailable with the lid closed in clamshell mode. Open the lid or select an iPhone, USB, or other external input. Also allow the launching app (usually Terminal) in **System Settings > Privacy & Security > Microphone**, then fully restart Church Cap.
+- On Windows, enable microphone and desktop-app access in **Settings > Privacy & security > Microphone**.
+- On Linux, check the selected PipeWire, PulseAudio, or ALSA capture source and mute state.
 - Run setup again if PortAudio was not installed.
+
+If the device is listed but the microphone meter remains at 0%, follow the same checks. Church Cap may be able to open a device even when the operating system or mixer supplies digital silence.
 
 ### Captions are inaccurate
 
@@ -301,7 +305,7 @@ AI-generated captions can contain mistakes. Use the sensitive blank/pause mode f
 
 ## Feedback
 
-The operator page includes a **Feedback** link. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics > Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. v0.7.3 retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
+The operator page includes a **Feedback** link. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics > Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. v0.7.4 retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
 
 Open **Diagnostics → Storage use** to see the application, Church Cap data, Hugging Face model downloads, OpenAI Whisper downloads, and current log use. Storage is calculated only when this page is opened or refreshed. **Review unused downloads** opens a Church Cap-themed confirmation menu; nothing is removed automatically. The active model, settings, transcripts, measurements, and current logs are protected. An inactive model offered for cleanup must download again if you select it later. Church Cap limits each of its diagnostic logs to 5 MB plus two archived copies.
 

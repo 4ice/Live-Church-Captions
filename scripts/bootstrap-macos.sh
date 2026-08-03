@@ -24,7 +24,7 @@ if [ ! -d .venv ]; then
 fi
 
 source .venv/bin/activate
-python -m pip install --upgrade pip "setuptools<82" wheel
+python -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 python -m pip install -r requirements.txt
 
 if [ ! -f .env ]; then

@@ -13,7 +13,7 @@ if (-not (Test-Path $VenvPython)) {
     exit 1
 }
 
-& $VenvPython -m pip install --upgrade "setuptools<82" wheel
+& $VenvPython -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 & $VenvPython -m pip install -r requirements-translation.txt
 
 Write-Host ""
@@ -27,6 +27,7 @@ Write-Host ""
 $scope = if ($All) { "all" } else { "common" }
 $pythonScript = @"
 from argostranslate import package
+from app.translation_packages import validate_argos_package_archive
 SCOPE = "$scope"
 COMMON_TARGETS = ["es", "fr", "pt", "pl", "uk", "ar", "fa", "zh", "zt"]
 print("Updating Argos package index...")
@@ -47,6 +48,7 @@ for target in targets:
     pkg = candidates[0]
     print(f"Downloading/installing en->{target}: {pkg.package_version}...")
     path = pkg.download()
+    validate_argos_package_archive(path)
     package.install_from_path(path)
     installed.append(target)
 print("\nInstalled target languages:", ", ".join(installed) or "none")

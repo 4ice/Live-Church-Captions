@@ -144,7 +144,19 @@ class ClientUiStringTests(unittest.TestCase):
         self.assertIn("else if (seg.is_final && !hasLiveSourceUpdates && !finalSegments.length)", script)
         self.assertIn("segment.cue_id || segment.source_unit_id", script)
         self.assertIn("segment.cue_revision || segment.source_revision", script)
-        self.assertIn('/static/client.js?v=0.7.3-silence-guard-1', template)
+        self.assertIn('/static/client.js?v=0.7.4-security-1', template)
+
+    def test_room_display_and_obs_share_the_polished_presentation_policy(self):
+        script = Path("app/static/client.js").read_text(encoding="utf-8")
+
+        self.assertIn("const isRoomDisplayPage = document.body.classList.contains('display-page');", script)
+        self.assertIn("const isObsPage = document.body.classList.contains('obs-page');", script)
+        self.assertIn("const isPolishedPresentationPage = isRoomDisplayPage || isObsPage;", script)
+        self.assertIn("function polishedPresentationDraftText(text, stableWordCount)", script)
+        self.assertIn("const baseChars = isPolishedPresentationPage ? 50", script)
+        self.assertIn("words.slice(0, confirmedCount).join(' ')", script)
+        self.assertIn("if (isPolishedPresentationPage && viewerLanguage === SOURCE_LANGUAGE && !presentationText)", script)
+        self.assertNotIn("presentationObs ? 42 : 50", script)
 
     def test_live_draft_extensions_keep_existing_line_breaks(self):
         script = Path("app/static/client.js").read_text(encoding="utf-8")

@@ -100,7 +100,7 @@ fi
 
 step "4/5 Installing Church Cap inside .venv"
 "$VENV_PY" -m ensurepip --upgrade >/dev/null 2>&1 || true
-"$VENV_PY" -m pip install --upgrade pip "setuptools<82" wheel
+"$VENV_PY" -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 "$VENV_PY" -m pip install -r requirements.txt
 mkdir -p data logs certs
 create_env_if_missing

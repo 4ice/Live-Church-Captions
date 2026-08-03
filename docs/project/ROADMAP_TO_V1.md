@@ -1,6 +1,6 @@
 # Roadmap To v1.0.0
 
-Church Cap v0.7.3 continues the move from a single preview app toward one maintained codebase with two supported experiences:
+Church Cap v0.7.4 continues the move from a single preview app toward one maintained codebase with two supported experiences:
 
 - the open-source desktop app for macOS, Windows, and Linux
 - the Church Cap Appliance profile for locked-down AlmaLinux boxes
@@ -27,6 +27,7 @@ The aim is not to fork the app. Shared captioning, audio, translation, security,
 ## v0.7.x Translation Readability And Context
 
 - Preserve the low-latency English route while giving translated viewers a rolling reader option.
+- **Presentation polish complete in v0.7.4:** Room Display and OBS share the same confirmed-prefix, two-line presentation policy so unstable English tail words are not exposed on projected or streamed output.
 - **Alpha 1 complete:** replace the single translation slot with timestamp-aligned cue revisions and bounded per-language queues that coalesce stale revisions, preserve unrelated sealed cues, rotate fairly, and expose privacy-safe cue/queue-health measurements.
 - **Alpha 2 superseded after Linux evidence:** retire the two-thought Contextual and four-thought Extended waits. Responsive Context now retranslates the current stable English cue and finalises it in place; legacy settings migrate automatically. Separate `zh-Hans`/`zh-Hant` choices retain deterministic OpenCC conversion.
 - Compare Responsive Context against Live and More Stable using first translated cue time, revision counts, queue pressure, and native-reader scores. Tune its debounce only from repeated reference-appliance evidence.

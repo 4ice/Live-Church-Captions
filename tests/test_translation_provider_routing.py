@@ -260,7 +260,8 @@ class TranslationProviderRoutingTests(unittest.TestCase):
         self.assertIn('"/api/language-requests"', source)
         self.assertIn('"/service-leader/api/language-requests"', source)
         self.assertIn('Depends(require_operator)', source.split('async def accept_language_request', 1)[1].split('async def reject_language_request', 1)[0])
-        self.assertIn("set_translation_config(", source.split('async def accept_language_request', 1)[1].split('@app.post("/api/language-requests/{language}/reject")', 1)[0])
+        self.assertIn("set_translation_config(", source.split('def accept_language_request_action', 1)[1].split('def reject_language_request_action', 1)[0])
+        self.assertIn("accept_language_request_action(language)", source.split('async def accept_language_request', 1)[1].split('@app.post("/api/language-requests/{language}/reject")', 1)[0])
 
 
 if __name__ == "__main__":

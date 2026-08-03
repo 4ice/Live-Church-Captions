@@ -6,13 +6,13 @@ This document describes the current alpha architecture.
 
 ## Current Release
 
-Version: `v0.7.3`
+Version: `v0.7.4`
 
 Status: controlled local church testing. Church Cap is open-source software, not a compliance-certified service, and churches remain responsible for their own privacy, safeguarding, accessibility, copyright, and operational policies.
 
 ## Deployment Model
 
-Church Cap v0.7.3 builds on the caption, translation-readability, operator-clarity, and updater-recovery work in v0.7.0–v0.7.2. It adds an end-of-speech hallucination guard shared by both Whisper backends. Each inference input retains a short endpoint-analysis tail after the last voiced callback, then streaming-oriented Silero VAD removes silence before Whisper sees it. Both backends use word timestamps and timestamp-aware hallucination handling; a weak final word cannot be confirmed by repeatedly decoding unchanged post-speech audio. The same no-speech, average-log-probability, and pathological-output checks remain in place. Hardware detection reports capability only; it never decides that a computer is an appliance. Appliance mode is activated by an installer-owned identity file at `/etc/churchcap-appliance/identity.json` or by explicit environment variables.
+Church Cap v0.7.4 builds on the v0.7.3 reliability baseline. It gives OBS the calmer confirmed-prefix presentation policy used by Room Display, protects setup, login, pairing, operator forms, and state-changing operator APIs against cross-site requests, bounds repeated password attempts, validates Argos package archives before extraction, and pins and verifies SMaLL-100 model resources. It does not add another caption model pass, fixed browser timer, translation job, or service-time queue.
 
 Profiles:
 
@@ -24,9 +24,9 @@ This keeps one codebase while allowing the appliance shell, kiosk setup, and upd
 
 Roadmap detail: [ROADMAP_TO_V1.md](ROADMAP_TO_V1.md).
 
-v0.7.3 action-plan status: [V0.7.3_IMPLEMENTATION.md](V0.7.3_IMPLEMENTATION.md).
+v0.7.4 implementation status: [V0.7.4_IMPLEMENTATION.md](V0.7.4_IMPLEMENTATION.md).
 
-v0.7.3 changes only the transcription acceptance boundary and its text-free diagnostics. A decode that began after the configured recent-voice grace period cannot replace the last speech-backed hypothesis. Existing cadence, cue identity, translation scheduling, audience rendering, privacy controls, and operator workflows remain unchanged.
+v0.7.4 combines the Room Display/OBS presentation policy with focused security and optional translation-installation hardening. Audience-phone caption timing, translation scheduling, service-metrics schema 11, and appliance identity remain unchanged from v0.7.3.
 
 ## Project Goals
 
@@ -54,15 +54,15 @@ Church microphones
 
 - `/` — public mobile/tablet caption viewer.
 - `/operator` — password-protected operator dashboard.
-- `/display` — large-screen caption display using the same smooth audience-caption renderer as phones.
-- `/obs` — transparent OBS browser-source overlay using the same smoother line pacing.
+- `/display` — large-screen caption display using the shared polished two-line presentation renderer.
+- `/obs` — transparent OBS browser-source overlay using the same polished two-line presentation renderer and wrapping width as Room Display.
 - `/obs/help` — operator-only OBS setup guide.
 - `/setup/network` — operator-only local network and hostname guide.
 - `/docs/privacy` — operator-only privacy notes.
 - `/docs/church-notice` — operator-only suggested church notice wording.
 - `/docs/disclaimer` — operator-only disclaimer notes.
 - Operator **Diagnostics** section — operator-only local support export with confirmation, system specs, runtime status, metrics, and redacted updater/CUDA logs.
-- v0.7.3 diagnostics expose the v0.6.1 measurements plus word-timestamp, actual decode-cadence, cue-engine, bounded-queue, responsive translation revision, first translated cue outcomes, hallucination-guard interventions, speech-bounded pass counts, and trailing-silence trim totals through service-metrics schema 11. Schema 9 and 10 summaries remain readable after upgrade. The broader diagnostics export also includes the existing redacted update log, which the update-failure panel directs operators to download. Reports contain numeric counts and distributions only; they never retain audio, recognition spans, word times or confidence, device metadata, captions, translations, transcripts, glossary contents, paths, network identifiers, or operator data.
+- v0.7.4 retains the v0.7.3 diagnostics: word-timestamp, actual decode-cadence, cue-engine, bounded-queue, responsive translation revision, first translated cue outcomes, hallucination-guard interventions, speech-bounded pass counts, and trailing-silence trim totals through service-metrics schema 11. Schema 9 and 10 summaries remain readable after upgrade. The broader diagnostics export also includes the existing redacted update log, which the update-failure panel directs operators to download. Reports contain numeric counts and distributions only; they never retain audio, recognition spans, word times or confidence, device metadata, captions, translations, transcripts, glossary contents, paths, network identifiers, or operator data.
 - Operator **Updates** section — operator-only GitHub release-tag check, confirmation, integrity-checked in-place update, rollback backup, restart, and reconnect flow.
 - `/service-leader` — restricted service-leader controls reached through a one-use QR pairing flow on the operator port.
 - `/api/diagnostics/export` — local diagnostics JSON export, operator login and local computer required.
@@ -347,9 +347,9 @@ Implementation guardrails:
 - do not raise CPU appliance language limits without benchmark evidence
 - do not advertise ROCm support until it is tested on real AMD hardware
 
-## v0.7.0 Streaming Word Timing And Translation Readability, Refined In v0.7.3
+## v0.7.0 Streaming Word Timing And Translation Readability, Refined In v0.7.4
 
-v0.7.0 added real Faster-Whisper word alignment and confidence to the server-owned cue lifecycle. v0.7.3 retains its immediate start-to-start cadence and adds layered boundaries: a 350 ms endpoint-analysis tail lets Silero make a 160 ms end-of-speech decision; only 100 ms of acoustic padding remains around detected speech; and a result that began outside the voice grace period cannot replace the last speech-backed wording. Both backends use word timestamps and a 0.5-second hallucination-silence threshold. Church Cap rejects high no-speech, low-average-log-probability, or pathological results before publication. Safe high-confidence words still publish immediately. A weak final word at the captured-audio edge needs a second matching decode **with at least 60 ms of new detected speech**; punctuation and an identical scheduled re-decode are not evidence. Standard Whisper adds only a lightweight VAD classifier pass. No additional transcription pass or fixed delay is introduced.
+v0.7.0 added real Faster-Whisper word alignment and confidence to the server-owned cue lifecycle. v0.7.3 retains its immediate start-to-start cadence and adds layered boundaries: a 350 ms endpoint-analysis tail lets Silero make a 160 ms end-of-speech decision; only 100 ms of acoustic padding remains around detected speech; and a result that began outside the voice grace period cannot replace the last speech-backed wording. Both backends use word timestamps and a 0.5-second hallucination-silence threshold. Church Cap rejects high no-speech, low-average-log-probability, or pathological results before publication. Safe high-confidence words still publish immediately. A weak final word at the captured-audio edge needs a second matching decode **with at least 60 ms of new detected speech**; punctuation and an identical scheduled re-decode are not evidence. v0.7.4 leaves that server cadence intact and applies the existing stable-prefix count to Room Display and OBS before rendering a draft. No additional transcription pass or fixed delay is introduced.
 
 Each translated language has a bounded queue. New revisions coalesce every older job for the same cue, including an obsolete final revision; unrelated sealed cues remain durable. Under pressure, the scheduler removes the oldest draft before a sealed cue, permits sealed-only overflow rather than losing completed speech, and rotates languages round-robin. Queue state is cleared by Sensitive mode and Clear. At Stop, Church Cap waits up to two seconds for outstanding work, then explicitly records and cancels anything remaining. Service-metrics schema 11 identifies `silero_endpoint_progress_publication_guard_v3` and records the existing word-alignment, cadence, cue, and translation measurements plus counts of speech-bounded inputs, total trailing silence trimmed, metadata-rejected and post-speech hypotheses, and total suppressed words. Those counts never retain the words themselves, audio, caption text, recognition timestamps, confidence values, or translated wording.
 

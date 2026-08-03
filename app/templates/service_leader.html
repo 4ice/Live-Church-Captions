@@ -60,6 +60,7 @@
           <span id="serviceLeaderAudioPercent" class="status-pill">0%</span>
         </div>
         <div class="large-meter service-leader-large-meter"><div id="serviceLeaderMeterFill" class="meter-fill"></div></div>
+        <p id="serviceLeaderAudioWarning" class="operator-start-notice error service-leader-audio-warning" aria-live="polite" hidden></p>
       </div>
     </section>
 
@@ -159,6 +160,10 @@
       </div>
       <p id="serviceLeaderLanguagePolicyCopy" class="muted small-result"></p>
       <p id="serviceLeaderLanguageHelp" class="muted">Language choices follow the operator’s installed resources and current limits.</p>
+      <div class="service-leader-health-grid service-leader-language-activity-grid" aria-label="Live translation activity">
+        <div><span>Active translation slots</span><strong id="serviceLeaderActiveTranslationSlots">0 / 1</strong></div>
+        <div><span>Viewer language demand</span><strong id="serviceLeaderLanguageDemand">None</strong></div>
+      </div>
       <input id="serviceLeaderLanguageSearch" class="language-search service-leader-language-search" type="search" placeholder="Search by language or code" autocomplete="off" aria-label="Search languages">
       <div class="service-leader-language-grid language-list" id="serviceLeaderLanguageGrid" role="listbox" aria-label="Available translated languages"></div>
       <button type="button" class="primary-button full-width" onclick="saveServiceLeaderLanguages()">Save languages</button>
@@ -168,6 +173,19 @@
     <p id="serviceLeaderResult" class="service-leader-result muted" aria-live="polite"></p>
     <p class="auth-footer centered-version">{{ app_version_label }}</p>
   </main>
+
+  <aside id="serviceLeaderLanguageRequestCard" class="language-request-card service-leader-language-request-card glass-card" hidden aria-live="polite" aria-label="Incoming language requests">
+    <div class="panel-heading-row">
+      <div>
+        <p class="eyebrow">Audience request</p>
+        <h2 id="serviceLeaderLanguageRequestHeading">Incoming language requests</h2>
+      </div>
+      <span id="serviceLeaderLanguageRequestCount" class="status-pill">0</span>
+    </div>
+    <p id="serviceLeaderLanguageRequestCopy" class="small-result service-leader-language-request-copy">Choose whether to enable or dismiss each requested language.</p>
+    <div id="serviceLeaderLanguageRequestList" class="language-request-list"></div>
+    <p id="serviceLeaderLanguageRequestResult" class="muted small-result" aria-live="polite"></p>
+  </aside>
 
   <dialog id="healthGuide" class="service-leader-dialog glass-card">
     <form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form>
@@ -489,20 +507,140 @@
     }
 
     function renderLanguages(translation) {
-      const signature = JSON.stringify(translation);
-      if (signature === lastSettingsSignature) return;
-      lastSettingsSignature = signature;
       serviceLeaderLanguageLimit = translation.translation_max_active_languages || 1;
       serviceLeaderLanguages = translation.available_languages || [];
       serviceLeaderLanguageRequestsEnabled = translation.translation_language_requests_enabled !== false;
       serviceLeaderRequestableLanguages = serviceLeaderLanguageRequestsEnabled ? (translation.requestable_languages || []) : [];
       serviceLeaderLanguageRequests = serviceLeaderLanguageRequestsEnabled ? (translation.language_requests || []) : [];
       serviceLeaderSelectedLanguages = new Set(translation.selected_languages || []);
+      renderServiceLeaderTranslationActivity(translation);
+      renderServiceLeaderLanguageRequests(translation);
+      const signature = JSON.stringify({
+        translation_enabled: translation.translation_enabled,
+        translation_max_active_languages: translation.translation_max_active_languages,
+        translation_language_policy: translation.translation_language_policy,
+        translation_language_requests_enabled: translation.translation_language_requests_enabled,
+        available_languages: translation.available_languages,
+        requestable_languages: translation.requestable_languages,
+        selected_languages: translation.selected_languages,
+      });
+      if (signature === lastSettingsSignature) return;
+      lastSettingsSignature = signature;
       document.getElementById('serviceLeaderTranslationEnabled').checked = !!translation.translation_enabled;
       document.getElementById('serviceLeaderLanguagePolicy').value = translation.translation_language_policy || 'automatic';
       syncServiceLeaderLanguagePolicyCopy();
       document.getElementById('serviceLeaderLanguageHelp').textContent = `Manual mode can use up to ${serviceLeaderLanguageLimit} selected language(s). English source captions are always available.`;
       renderServiceLeaderLanguageList(document.getElementById('serviceLeaderLanguageSearch').value);
+    }
+
+    function serviceLeaderLanguageDisplayName(code) {
+      const normalised = String(code || '').toLowerCase();
+      const language = [...serviceLeaderLanguages, ...serviceLeaderRequestableLanguages]
+        .find(item => String(item.code || '').toLowerCase() === normalised);
+      return language?.name || language?.native || normalised.toUpperCase();
+    }
+
+    function renderServiceLeaderTranslationActivity(translation) {
+      const active = (translation.active_translated_languages || []).map(code => String(code).toLowerCase());
+      const limit = Number(translation.translation_max_active_languages || 1);
+      const slots = document.getElementById('serviceLeaderActiveTranslationSlots');
+      const demand = document.getElementById('serviceLeaderLanguageDemand');
+      if (slots) slots.textContent = `${active.length} / ${limit}${active.length ? ` · ${active.map(serviceLeaderLanguageDisplayName).join(', ')}` : ''}`;
+      if (demand) {
+        const demandItems = Object.entries(translation.viewer_language_counts || {})
+          .filter(([code, count]) => String(code).toLowerCase() !== 'en' && Number(count || 0) > 0)
+          .sort((a, b) => Number(b[1]) - Number(a[1]));
+        demand.textContent = demandItems.length
+          ? demandItems.map(([code, count]) => `${serviceLeaderLanguageDisplayName(code)} ${count}`).join(' · ')
+          : 'None';
+      }
+    }
+
+    function renderServiceLeaderLanguageRequests(translation) {
+      const card = document.getElementById('serviceLeaderLanguageRequestCard');
+      const list = document.getElementById('serviceLeaderLanguageRequestList');
+      const count = document.getElementById('serviceLeaderLanguageRequestCount');
+      const copy = document.getElementById('serviceLeaderLanguageRequestCopy');
+      const heading = document.getElementById('serviceLeaderLanguageRequestHeading');
+      if (!card || !list) return;
+      const requestsEnabled = translation.translation_language_requests_enabled !== false;
+      const requests = requestsEnabled ? (translation.language_requests || []) : [];
+      const signature = JSON.stringify(requests);
+      card.hidden = !requestsEnabled || requests.length === 0;
+      if (card.dataset.signature === signature) return;
+      card.dataset.signature = signature;
+      if (count) count.textContent = String(requests.length);
+      if (heading) heading.textContent = requests.length === 1 ? 'Incoming language request' : 'Incoming language requests';
+      if (copy) {
+        const limit = Number(translation.translation_max_active_languages || 1);
+        copy.textContent = `Select Accept to enable a language for this service, or Reject to dismiss it. Up to ${limit} translated language${limit === 1 ? '' : 's'} can be active at once.`;
+      }
+      list.textContent = '';
+      for (const request of requests) {
+        const code = String(request.code || '').toLowerCase();
+        const language = request.language || {code, name: serviceLeaderLanguageDisplayName(code)};
+        const row = document.createElement('div');
+        row.className = 'language-request-row';
+
+        const identity = document.createElement('span');
+        identity.className = 'table-language-cell';
+        const flag = document.createElement('span');
+        const flagText = String(language.flag || '').trim();
+        const codeText = code.slice(0, 3).toUpperCase();
+        flag.className = `${flagText && flagText !== '🌐' ? 'language-flag-chip' : 'language-code-badge'} table-language-flag`;
+        flag.textContent = flagText && flagText !== '🌐' ? flagText : codeText;
+        flag.dataset.code = codeText;
+        const text = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = language.name || language.native || code.toUpperCase();
+        const meta = document.createElement('small');
+        meta.className = 'muted language-request-meta';
+        const requestCount = Number(request.count || 1);
+        meta.textContent = `${requestCount} request${requestCount === 1 ? '' : 's'} · Language code ${code.toUpperCase()}`;
+        text.append(title, meta);
+        identity.append(flag, text);
+
+        const actions = document.createElement('span');
+        actions.className = 'language-request-actions';
+        for (const action of ['accept', 'reject']) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = action === 'accept' ? 'compact-button' : 'secondary-button compact-button';
+          button.textContent = action === 'accept' ? 'Accept' : 'Reject';
+          button.addEventListener('click', () => resolveServiceLeaderLanguageRequest(code, action, button));
+          actions.appendChild(button);
+        }
+        row.append(identity, actions);
+        list.appendChild(row);
+      }
+    }
+
+    async function resolveServiceLeaderLanguageRequest(code, action, button = null) {
+      const result = document.getElementById('serviceLeaderLanguageRequestResult');
+      const languageResult = document.getElementById('serviceLeaderLanguageResult');
+      const originalLabel = button?.textContent || '';
+      if (button) {
+        button.disabled = true;
+        button.textContent = action === 'accept' ? 'Accepting…' : 'Rejecting…';
+      }
+      try {
+        const data = await serviceLeaderFetch(`/service-leader/api/language-requests/${encodeURIComponent(code)}/${action}`, {method: 'POST'});
+        lastSettingsSignature = '';
+        renderLanguages(data.translation || data);
+        const message = action === 'accept'
+          ? `${serviceLeaderLanguageDisplayName(code)} enabled for this service.`
+          : `${serviceLeaderLanguageDisplayName(code)} request dismissed.`;
+        if (result) result.textContent = message;
+        if (languageResult) languageResult.textContent = message;
+        await refreshServiceLeaderStatus();
+      } catch (error) {
+        if (result) result.textContent = error.message;
+        if (languageResult) languageResult.textContent = error.message;
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalLabel;
+        }
+      }
     }
 
     function syncServiceLeaderLanguagePolicyCopy() {
@@ -646,6 +784,13 @@
         const pct = Math.round(level * 100);
         document.getElementById('serviceLeaderMeterFill').style.width = `${pct}%`;
         document.getElementById('serviceLeaderAudioPercent').textContent = `${pct}%`;
+        const audioWarning = document.getElementById('serviceLeaderAudioWarning');
+        if (audioWarning) {
+          const warning = String(data.audio_warning || '');
+          audioWarning.textContent = warning;
+          audioWarning.classList.toggle('visible', Boolean(warning));
+          audioWarning.hidden = !warning;
+        }
         renderHealth(data.health);
         renderLanguages(data.translation);
         renderAudio(data.audio);

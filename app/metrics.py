@@ -66,6 +66,8 @@ class RuntimeMetrics:
     translations_completed: int = 0
     audio_device: str | int | None = None
     sample_rate: int = 16000
+    audio_stream_open: bool = False
+    audio_input_warning: str | None = None
     error: str | None = None
 
 

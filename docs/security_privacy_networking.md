@@ -8,6 +8,14 @@ The public caption pages are open so visitors can scan a QR code and read captio
 
 On first startup, Church Cap opens `/setup` so the operator can create a local password. The password is stored as a salted hash in the per-user data folder, not in the project folder. `OPERATOR_PASSWORD` and `SESSION_SECRET` in `.env` are optional legacy/development overrides; for normal church use, prefer the first-run setup page.
 
+v0.7.4 gives setup, login, Service Leader pairing, operator forms, and state-changing operator API calls a same-origin request token. This prevents another website open in the browser from silently submitting control changes to a locally running Church Cap instance. Operator session cookies are `HttpOnly` and `SameSite=Strict`; HTTPS deployments also receive the `Secure` cookie flag.
+
+Authentication forms accept either the matching short-lived token or browser-verified same-origin evidence. This keeps a login form left open during an upgrade usable and accounts for the appliance proxy presenting a different internal address. Forwarded browser addresses and `Sec-Fetch-Site` are handled explicitly; an explicit cross-site request remains blocked. A failed page-security check happens before password verification and does not mean the password has changed or needs resetting.
+
+Password failures are throttled in memory by source and login flow. The first five attempts are immediate; continued failures pause that login flow for 2, 4, 8, 16, then at most 30 seconds. A successful login clears the entry, old entries expire, and restarting Church Cap clears all pauses. When a pause applies, the page explains why it happened, how long to wait, and that captions and connected viewers are not affected. This is deliberately bounded so an accidental lockout cannot disable a live service for a long period.
+
+On macOS and Linux, Church Cap applies owner-only `0600` permissions to the primary and backup operator-authentication files whenever they are loaded or saved. Windows keeps the files in the signed-in user's application-data folder and uses the account's inherited Windows permissions. Filesystems that cannot retain the requested POSIX mode do not stop Church Cap from starting; the authenticated Operator security panel shows a permission warning instead.
+
 Protected pages/routes include:
 
 ```text
@@ -42,6 +50,10 @@ Audience caption pages remain open:
 /api/client-ui/{language}
 /ws/captions
 ```
+
+The public `/health` response is deliberately limited to readiness, caption-service status, and the Church Cap version needed by the updater. `/api/languages` exposes only the language availability and request information required by audience devices. Model paths, audio-device information, internal URLs, translation scheduler details, and operator security configuration remain available only through authenticated Operator status and diagnostics.
+
+All HTTP pages receive `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a conservative browser `Permissions-Policy`. The policy disables unused camera, location, payment, and USB features but deliberately does not deny microphone access, preserving compatibility with current and future local audio/diagnostic launch paths. Authentication pages continue to block framing and caching. A full Content Security Policy is not enforced yet because Church Cap's current inline operator scripts, Room Display, and OBS paths need a dedicated compatibility migration first.
 
 ## Sensitive moment mode
 
@@ -132,7 +144,7 @@ The operator login page and the authenticated **Service Leader** operator sectio
 
 Generating a replacement invalidates the previous unused QR but does not revoke established sessions. The operator can separately cancel an unused QR or disconnect all paired devices.
 
-The restricted session can control caption start/stop, sensitive blank/resume, audio input while stopped, caption-health viewing, translated-caption availability in Automatic or Manual mode, audience QR sharing through a temporary phone-download QR, and warned exports for the current-session transcript and redacted support logs. It cannot alter performance settings, install translation models, change account/privacy settings, run updates, or use full operator APIs. Its caption preview observes the public caption stream without being counted as an audience viewer. See `docs/service_leader_controls.md`.
+The restricted session can control caption start/stop, sensitive blank/resume, audio input while stopped, caption-health viewing, translated-caption availability in Automatic or Manual mode, and incoming audience language-request acceptance or rejection. It can also view active translation-slot use and per-language viewer demand, share the audience QR through a temporary phone-download QR, and perform warned exports for the current-session transcript and redacted support logs. Language-request mutations require the restricted session's own same-origin token and reuse the same bounded translation configuration actions as the Operator page. It cannot alter performance settings, install translation models, change account/privacy settings, run updates, or use full operator APIs. Its caption preview observes the public caption stream without being counted as an audience viewer. See `docs/service_leader_controls.md`.
 
 When secure operator mode is enabled, the operator listener must be reachable on the LAN for `/service-leader`, but middleware blocks remote access to every other operator path. Restrict the operator port to a trusted staff/AV subnet at the host firewall or router where practical.
 

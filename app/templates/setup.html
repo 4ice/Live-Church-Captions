@@ -19,6 +19,7 @@
       <p class="muted">Create the password used to access the Church Cap control station. Public caption viewers will not need this password.</p>
       {% if error %}<p class="error-banner">{{ error }}</p>{% endif %}
       <form method="post" action="/setup" class="stacked-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label for="password">New password</label>
         <input id="password" name="password" type="password" minlength="8" required autofocus autocomplete="new-password">
         <label for="confirm_password">Confirm password</label>

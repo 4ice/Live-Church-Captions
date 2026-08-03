@@ -7,7 +7,7 @@ Church Cap is a local live-caption app for churches. It runs on the caption comp
 Open Terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.3"
+cd "$HOME/Documents/Live-Church-Captions-0.7.4"
 ```
 
 Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
@@ -23,7 +23,7 @@ Setup may take a while. It installs the local Python environment and audio depen
 Open PowerShell, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.3"
+cd "$HOME\Documents\Live-Church-Captions-0.7.4"
 ```
 
 Run setup:
@@ -47,7 +47,7 @@ If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came fro
 Open a terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.3"
+cd "$HOME/Documents/Live-Church-Captions-0.7.4"
 bash setup-linux.sh
 ```
 
@@ -143,7 +143,10 @@ Then restart Church Cap and create a new operator password.
 No microphone/audio input:
 
 - Check the USB audio interface is connected.
-- Check macOS microphone permissions in System Settings.
+- Watch the Operator microphone meter. If Church Cap opens the input but receives digital silence for three seconds, it shows a platform-specific warning without stopping captions.
+- On macOS, the built-in MacBook microphone may be unavailable with the lid closed in clamshell mode. Open the lid or select an iPhone, USB, or other external input. Also allow the app used to start Church Cap (usually Terminal) in **System Settings > Privacy & Security > Microphone**, then fully restart Church Cap.
+- On Windows, enable microphone access and desktop-app access in **Settings > Privacy & security > Microphone**.
+- On Linux, check the selected PipeWire, PulseAudio, or ALSA capture source and confirm that it is not muted.
 - Restart captions after changing the input.
 
 Windows CUDA, performance, update, or setup problems:

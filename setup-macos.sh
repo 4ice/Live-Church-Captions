@@ -43,7 +43,7 @@ Commands this script may run:
   eval "$(/opt/homebrew/bin/brew shellenv)"
   brew install python@3.12 portaudio
   /opt/homebrew/bin/python3.12 -m venv .venv
-  .venv/bin/python -m pip install --upgrade pip "setuptools<82" wheel
+  .venv/bin/python -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
   .venv/bin/python -m pip install -r requirements.txt
   .venv/bin/python -m pip install -r requirements-translation.txt
   ./scripts/install-translation-models-argos.sh                      # installs Base package / Argos packs, does not enable live translation
@@ -160,7 +160,7 @@ fi
 
 step "4/7 Installing Python packages inside .venv only"
 "$VENV_PY" -m ensurepip --upgrade >/dev/null 2>&1 || true
-"$VENV_PY" -m pip install --upgrade pip "setuptools<82" wheel
+"$VENV_PY" -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 "$VENV_PY" -m pip install -r requirements.txt
 
 step "5/7 Creating local folders and .env"

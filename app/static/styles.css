@@ -1584,6 +1584,7 @@ select {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
+  align-items: stretch;
 }
 .dashboard-grid > .operator-panel {
   min-width: 0;
@@ -1644,6 +1645,9 @@ select {
 .operator-start-notice.visible {
   opacity: 1;
   visibility: visible;
+}
+.operator-start-notice[hidden] {
+  display: none !important;
 }
 .operator-start-notice::before {
   content: '';
@@ -4270,5 +4274,79 @@ select {
   }
   .language-request-actions button {
     flex: 1 1 0;
+  }
+}
+.service-leader-language-request-card {
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: auto;
+  width: min(27rem, calc(100vw - 2rem));
+  max-height: min(82vh, calc(100dvh - 2rem));
+  transform-origin: top right;
+  z-index: 72;
+}
+.service-leader-language-request-card:not([hidden]) {
+  animation: serviceLeaderLanguageRequestDrop 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.service-leader-language-request-card h2 {
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+.service-leader-language-request-copy {
+  color: var(--text);
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+.service-leader-language-request-card .language-request-row {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0.82rem;
+}
+.service-leader-language-request-card .language-request-row strong {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+.service-leader-language-request-card .language-request-meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.service-leader-language-request-card .language-request-actions button {
+  flex: 1 1 0;
+  min-width: 4.8rem;
+}
+.service-leader-language-activity-grid {
+  margin: 0.85rem 0;
+}
+.service-leader-language-activity-grid strong {
+  overflow-wrap: anywhere;
+}
+.service-leader-audio-warning {
+  margin-top: 0.75rem;
+}
+@keyframes serviceLeaderLanguageRequestDrop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-100% - 6rem)) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (max-width: 720px) {
+  .service-leader-language-request-card {
+    top: max(0.75rem, env(safe-area-inset-top));
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: auto;
+    width: auto;
+    max-height: min(86vh, calc(100dvh - 1.5rem));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .language-request-card:not([hidden]),
+  .service-leader-language-request-card:not([hidden]) {
+    animation: none !important;
   }
 }

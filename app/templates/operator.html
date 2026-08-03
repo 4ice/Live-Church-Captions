@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="church-cap-csrf-token" content="{{ csrf_token }}">
   <title>Church Cap · Operator</title>
   <link rel="icon" type="image/png" href="/static/branding/church-cap-square-dark.png">
   <link rel="stylesheet" href="/static/styles.css">
@@ -23,6 +24,20 @@
       const systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
       if (saved === 'light' || (saved === 'system' && systemLight)) document.body.classList.add('light-mode');
       if (localStorage.getItem('operatorSidebarCollapsed') === 'true') document.body.classList.add('operator-sidebar-collapsed');
+    })();
+    (function () {
+      const nativeFetch = window.fetch.bind(window);
+      const csrfToken = document.querySelector('meta[name="church-cap-csrf-token"]')?.content || '';
+      window.fetch = function (input, init = {}) {
+        const method = String(init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+        const requestUrl = new URL(input instanceof Request ? input.url : String(input), window.location.href);
+        if (requestUrl.origin === window.location.origin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+          const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+          headers.set('X-CSRF-Token', csrfToken);
+          return nativeFetch(input, {...init, headers});
+        }
+        return nativeFetch(input, init);
+      };
     })();
   </script>
 
@@ -63,6 +78,7 @@
         <button type="button" id="operatorThemeToggle" class="secondary-button full-width" onclick="toggleOperatorTheme()">Light mode</button>
         <a class="secondary-button link-as-button full-width" href="/account">Account / password</a>
         <form method="post" action="/logout">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="secondary-button full-width">Log out</button>
         </form>
       </div>
@@ -166,6 +182,7 @@
               <span id="audioPercent" class="status-pill">0%</span>
             </div>
             <div class="large-meter"><div id="audioMeter" class="meter-fill"></div></div>
+            <p id="audioInputWarning" class="operator-start-notice error" aria-live="polite" hidden></p>
             <dl class="status-list compact-status-list">
               <div><dt>Model</dt><dd id="modelStatus">Loading…</dd></div>
               <div><dt>Latency</dt><dd id="transcriptionLatency">—</dd></div>
@@ -663,7 +680,13 @@
               <div class="security-status-item"><span>Operator localhost lock</span><strong>{{ "On" if security.lock_operator_to_localhost else "Off" }}</strong></div>
               <div class="security-status-item"><span>Paired service leader path</span><strong>{{ security.service_leader_url }}</strong></div>
               <div class="security-status-item"><span>Dual-port mode</span><strong>{{ "On" if security.dual_port_mode else "Off" }}</strong></div>
+              <div class="security-status-item"><span>Authentication files</span><strong title="{{ security.auth_storage.message }}">{% if security.auth_storage.status == "owner_only" %}Owner only{% elif security.auth_storage.status == "platform_managed" %}Managed by Windows{% else %}Check permissions{% endif %}</strong></div>
             </div>
+            {% if not security.auth_storage.protected %}
+            <div class="warning-panel slim-warning glass-card">
+              <strong>Authentication-file warning:</strong> {{ security.auth_storage.message }} Church Cap will continue running, but the computer administrator should check the application-data folder permissions.
+            </div>
+            {% endif %}
             <div class="warning-panel slim-warning glass-card">
               <strong>Offline HTTPS note:</strong> {{ security.offline_https_note }}
             </div>
@@ -3032,6 +3055,13 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
         const audioPercent = document.getElementById('audioPercent');
         if (audioMeter) audioMeter.style.width = pct + '%';
         if (audioPercent) audioPercent.textContent = pct + '%';
+        const audioInputWarning = document.getElementById('audioInputWarning');
+        if (audioInputWarning) {
+          const warning = String(data.metrics?.audio_input_warning || '');
+          audioInputWarning.textContent = warning;
+          audioInputWarning.classList.toggle('visible', Boolean(warning));
+          audioInputWarning.hidden = !warning;
+        }
         const runtime = data.settings?.resolved_whisper_runtime || {};
         const runtimeDevice = data.metrics?.model_device || runtime.device || data.settings?.device || 'auto';
         const runtimeCompute = data.metrics?.model_compute_type || runtime.compute_type || data.settings?.compute_type || 'auto';

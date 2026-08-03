@@ -50,6 +50,16 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         self.assertIn('request.headers.get("x-csrf-token")', self.main)
         self.assertIn('request.headers.get("origin")', self.main)
         self.assertIn("require_service_leader_mutation(request, session)", self.main)
+        accept_route = self.main.split("async def service_leader_accept_language_request", 1)[1].split(
+            '@app.post("/service-leader/api/language-requests/{language}/reject")', 1
+        )[0]
+        reject_route = self.main.split("async def service_leader_reject_language_request", 1)[1].split(
+            '@app.post("/api/language-requests/{language}/accept")', 1
+        )[0]
+        self.assertIn("require_service_leader_mutation(request, session)", accept_route)
+        self.assertIn("require_service_leader_mutation(request, session)", reject_route)
+        self.assertIn("accept_language_request_action(language)", accept_route)
+        self.assertIn("reject_language_request_action(language)", reject_route)
 
     def test_service_leader_role_has_no_operator_sensitive_routes(self):
         for forbidden in (
@@ -171,6 +181,19 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         self.assertNotIn("window.confirm", self.service_leader)
         self.assertIn("/service-leader/transcript.txt", self.service_leader)
         self.assertIn("confirmed=1", self.service_leader)
+        self.assertIn("serviceLeaderLanguageRequestCard", self.service_leader)
+        self.assertIn("resolveServiceLeaderLanguageRequest", self.service_leader)
+        self.assertIn("/service-leader/api/language-requests/${encodeURIComponent(code)}/${action}", self.service_leader)
+        self.assertIn("serviceLeaderActiveTranslationSlots", self.service_leader)
+        self.assertIn("serviceLeaderLanguageDemand", self.service_leader)
+        self.assertIn('"active_translated_languages": list(hub.active_translated_languages())', self.main)
+        self.assertIn("for code, count in hub.language_counts().items()", self.main)
+        self.assertIn(".service-leader-language-request-card", self.styles)
+        self.assertIn("serviceLeaderLanguageRequestDrop", self.styles)
+        self.assertIn("translateY(calc(-100% - 6rem))", self.styles)
+        self.assertIn("top: max(0.75rem, env(safe-area-inset-top));", self.styles)
+        self.assertIn("Incoming language request", self.service_leader)
+        self.assertIn("Select Accept to enable a language for this service", self.service_leader)
 
     def test_service_leader_page_has_language_policy_and_dismissible_notices(self):
         self.assertIn("serviceLeaderLanguagePolicy", self.service_leader)
@@ -218,6 +241,9 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         self.assertIn('class="large-meter service-leader-large-meter"', self.service_leader)
         self.assertIn('id="serviceLeaderMeterFill" class="meter-fill"', self.service_leader)
         self.assertIn("serviceLeaderAudioPercent", self.service_leader)
+        self.assertIn("serviceLeaderAudioWarning", self.service_leader)
+        self.assertIn("data.audio_warning", self.service_leader)
+        self.assertIn('"audio_warning": metrics.get("audio_input_warning")', self.main)
         self.assertIn('id="disconnectDialog"', self.service_leader)
         self.assertIn("service-leader-confirm-dialog", self.service_leader)
         self.assertIn("service-leader-danger-button", self.styles)

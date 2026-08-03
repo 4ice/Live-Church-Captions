@@ -286,6 +286,7 @@ try {
 
     if (Test-Path $VenvPython) {
         Write-Host "Updating Python packages before replacing app files..."
+        & $VenvPython -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
         & $VenvPython -m pip install -r (Join-Path $StageDir "requirements.txt")
         $translationReq = Join-Path $StageDir "requirements-translation.txt"
         if (Test-Path $translationReq) {

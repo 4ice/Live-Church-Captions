@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import hashlib
+import hmac
 from importlib import metadata
 import importlib.util
 import os
@@ -13,11 +15,34 @@ from typing import Any
 # imported: this avoids service-time model loading/network attempts and prevents
 # packaged Stanza model files from entering the translation path.
 os.environ["ARGOS_STANZA_AVAILABLE"] = "0"
+os.environ["ARGOS_CHUNK_TYPE"] = "MINISBD"
+
+
+class _BoundedCueSentencizer:
+    """Treat one Church Cap cue as one sentence without another model pass."""
+
+    @staticmethod
+    def split_sentences(text: str) -> list[str]:
+        return [text] if text.strip() else []
+
+
+def _use_bounded_argos_cue(translation: Any) -> None:
+    """Replace Argos sentence detection on the short cue Church Cap already bounded."""
+    candidate = translation
+    for _ in range(4):
+        if hasattr(candidate, "sentencizer"):
+            candidate.sentencizer = _BoundedCueSentencizer()
+            return
+        candidate = getattr(candidate, "underlying", None)
+        if candidate is None:
+            return
 
 SOURCE_LANGUAGE = "en"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CT2_SMALL100_PROVIDER = "ct2small100"
 CT2_SMALL100_MODEL_NAME = "alirezamsh/small100"
+CT2_SMALL100_MODEL_REVISION = "8ab680e26a596d2e3d2d2d17ae0f68df1037328c"
+CT2_SMALL100_TOKENIZER_SHA256 = "73c8d2405e9c588582434c9f91327127faf133b9f915b203ed07ba4cd0ca9c92"
 CT2_SMALL100_MODEL_DIR = Path(os.environ.get("CHURCHCAP_CT2_SMALL100_DIR") or PROJECT_ROOT / "data" / "models" / "small100-ct2-int8")
 CHINESE_SIMPLIFIED = "zh-hans"
 CHINESE_TRADITIONAL = "zh-hant"
@@ -589,6 +614,7 @@ class LocalTranslator:
                     applied=False,
                     warning=f"No installed Argos model for {self.source_language}->{target_language}.",
                 )
+            _use_bounded_argos_cue(translation)
             translated = translation.translate(text)
             if translated and translated.strip() and translated != text:
                 return TranslationResult(text=translated, applied=True)
@@ -608,7 +634,16 @@ class LocalTranslator:
             from huggingface_hub import hf_hub_download  # type: ignore
         except Exception as exc:
             raise RuntimeError(f"Core SMaLL-100 tokenizer dependency is not installed: {exc}") from exc
-        tokenizer_file = Path(hf_hub_download(CT2_SMALL100_MODEL_NAME, "tokenization_small100.py"))
+        tokenizer_file = Path(
+            hf_hub_download(
+                CT2_SMALL100_MODEL_NAME,
+                "tokenization_small100.py",
+                revision=CT2_SMALL100_MODEL_REVISION,
+            )
+        )
+        tokenizer_digest = hashlib.sha256(tokenizer_file.read_bytes()).hexdigest()
+        if not hmac.compare_digest(tokenizer_digest, CT2_SMALL100_TOKENIZER_SHA256):
+            raise RuntimeError("Pinned SMaLL-100 tokenizer failed its integrity check; remove the cached file and reinstall the model.")
         module_name = "_church_cap_small100_tokenizer"
         module = sys.modules.get(module_name)
         if module is None:
@@ -619,7 +654,10 @@ class LocalTranslator:
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
         tokenizer_cls = getattr(module, "SMALL100Tokenizer")
-        self._small100_tokenizer = tokenizer_cls.from_pretrained(CT2_SMALL100_MODEL_NAME)
+        self._small100_tokenizer = tokenizer_cls.from_pretrained(
+            CT2_SMALL100_MODEL_NAME,
+            revision=CT2_SMALL100_MODEL_REVISION,
+        )
         return self._small100_tokenizer
 
     def _load_small100(self) -> tuple[Any, Any]:
@@ -631,7 +669,11 @@ class LocalTranslator:
         except Exception as exc:
             raise RuntimeError(f"Core SMaLL-100 dependencies are not installed: {exc}") from exc
         self._small100_tokenizer = self._load_small100_tokenizer()
-        self._small100_model = M2M100ForConditionalGeneration.from_pretrained(CT2_SMALL100_MODEL_NAME)
+        self._small100_model = M2M100ForConditionalGeneration.from_pretrained(
+            CT2_SMALL100_MODEL_NAME,
+            revision=CT2_SMALL100_MODEL_REVISION,
+            use_safetensors=True,
+        )
         self._small100_model.eval()
         if torch.cuda.is_available():
             self._small100_model.to("cuda")

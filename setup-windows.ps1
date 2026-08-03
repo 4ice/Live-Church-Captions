@@ -131,7 +131,7 @@ if (-not (Test-Path $VenvPython)) {
 
 Step "3/6 Installing Python packages inside .venv only"
 & $VenvPython -m ensurepip --upgrade | Out-Null
-& $VenvPython -m pip install --upgrade pip "setuptools<82" wheel
+& $VenvPython -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 & $VenvPython -m pip install -r requirements.txt
 
 Step "4/6 Creating local folders and .env"

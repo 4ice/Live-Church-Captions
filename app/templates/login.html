@@ -18,6 +18,7 @@
       <h1>Operator login</h1>
       <p class="muted">The public caption page does not need a login. Operator controls are protected.</p>
       <form method="post" action="/login" class="stacked-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label for="password">Operator password</label>
         <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
         {% if error %}<p class="error-text">{{ error }}</p>{% endif %}
@@ -27,6 +28,7 @@
       <section id="serviceLeaderPairingForm" class="service-leader-pairing-form" hidden>
         <p class="muted">Create a one-use QR code for the simpler service controls.</p>
         <form method="post" action="/service-leader/pairing/create" class="stacked-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <label for="service_leader_password">Operator password</label>
           <input id="service_leader_password" name="service_leader_password" type="password" autocomplete="current-password" required>
           {% if service_leader_error %}<p class="error-text">{{ service_leader_error }}</p>{% endif %}

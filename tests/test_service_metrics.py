@@ -22,7 +22,7 @@ class ServiceMetricsTests(unittest.TestCase):
 
     def test_completed_summary_contains_stage_metrics_and_outcomes(self):
         metrics.start_service_metrics({
-            "app_version": "0.7.3",
+            "app_version": "0.7.4",
             "diagnostics_schema_version": 2,
             "translation_provider": "both",
             "translation_allowed_languages": ["fa", "zh"],
@@ -79,7 +79,7 @@ class ServiceMetricsTests(unittest.TestCase):
         summary = metrics.get_service_metrics()
 
         self.assertEqual(summary["status"], "completed")
-        self.assertEqual(summary["app_version"], "0.7.3")
+        self.assertEqual(summary["app_version"], "0.7.4")
         self.assertEqual(summary["service_metrics_schema_version"], 11)
         self.assertTrue(summary["run_id"])
         self.assertEqual(summary["load_identity"]["actual_model"], "base.en")
@@ -117,7 +117,7 @@ class ServiceMetricsTests(unittest.TestCase):
     def test_latest_five_completed_summaries_survive_storage_reload(self):
         run_ids = []
         for index in range(6):
-            metrics.start_service_metrics({"app_version": "0.7.3", "performance_label": f"preset-{index}"})
+            metrics.start_service_metrics({"app_version": "0.7.4", "performance_label": f"preset-{index}"})
             metrics.record_transcription(0.1 + index)
             metrics.finish_service_metrics()
             run_ids.append(metrics.get_service_metrics()["run_id"])
@@ -145,10 +145,10 @@ class ServiceMetricsTests(unittest.TestCase):
                 self.assertEqual(report["latest_completed_service"]["run_id"], run_id)
 
     def test_report_exposes_current_and_latest_completed_separately(self):
-        metrics.start_service_metrics({"app_version": "0.7.3"})
+        metrics.start_service_metrics({"app_version": "0.7.4"})
         metrics.finish_service_metrics()
         completed_id = metrics.get_service_metrics()["run_id"]
-        metrics.start_service_metrics({"app_version": "0.7.3"})
+        metrics.start_service_metrics({"app_version": "0.7.4"})
 
         report = metrics.get_service_metrics_report()
         self.assertEqual(report["availability_state"], "active_service")
@@ -156,7 +156,7 @@ class ServiceMetricsTests(unittest.TestCase):
         self.assertEqual(report["latest_completed_service"]["run_id"], completed_id)
 
     def test_abandoned_active_marker_is_reported_incomplete_after_restart(self):
-        metrics.start_service_metrics({"app_version": "0.7.3"})
+        metrics.start_service_metrics({"app_version": "0.7.4"})
         active_id = metrics.get_service_metrics()["run_id"]
 
         metrics.initialise_service_metrics_storage(self.metrics_path)

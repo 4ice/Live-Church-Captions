@@ -20,7 +20,24 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.auth import COOKIE_NAME, bootstrap_auth_store, create_session_token, get_auth_config, password_is_valid, require_operator, set_operator_password
+from app.auth import (
+    AUTH_FORM_CSRF_COOKIE_NAME,
+    AUTH_FORM_CSRF_MAX_AGE_SECONDS,
+    COOKIE_NAME,
+    auth_form_request_is_valid,
+    authentication_throttle,
+    bootstrap_auth_store,
+    create_form_csrf_token,
+    create_operator_csrf_token,
+    create_session_token,
+    get_auth_config,
+    password_is_valid,
+    protect_auth_storage,
+    require_operator,
+    require_operator_mutation,
+    set_operator_password,
+    throttle_key,
+)
 from app.broadcast import CaptionHub
 from app.glossary import Glossary
 from app.models import CaptionSegment
@@ -230,6 +247,23 @@ def safe_translation_state() -> dict:
             "language_requests_enabled": True,
             "language_requests": [],
         }
+
+
+def public_translation_state() -> dict:
+    """Return only the translation availability data needed by viewers."""
+    state = safe_translation_state()
+    return {
+        "enabled": bool(state.get("enabled")),
+        "available_languages": list(state.get("available_languages") or [SOURCE_LANGUAGE]),
+        "language_policy": state.get("language_policy", "automatic"),
+        "language_requests_enabled": bool(state.get("language_requests_enabled", True)),
+        "requestable_languages": list(state.get("requestable_languages") or []),
+        "language_requests": [
+            {"code": str(item.get("code", ""))}
+            for item in (state.get("language_requests") or [])
+            if isinstance(item, dict) and item.get("code")
+        ],
+    }
 
 
 settings = get_settings()
@@ -522,10 +556,55 @@ def base_template_context(request: Request | None = None) -> dict:
 def _no_store(response: Response) -> Response:
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
-    response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
+    return _apply_security_headers(response)
+
+
+def _apply_security_headers(response: Response) -> Response:
+    response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=(), payment=(), usb=()"
     return response
+
+
+def _render_auth_page(request: Request, template_name: str, context: dict, *, status_code: int = 200) -> Response:
+    csrf_token = create_form_csrf_token()
+    response = template_response(
+        template_name,
+        {**base_template_context(request), **context, "csrf_token": csrf_token},
+        status_code=status_code,
+    )
+    response.set_cookie(
+        AUTH_FORM_CSRF_COOKIE_NAME,
+        csrf_token,
+        httponly=True,
+        samesite="strict",
+        secure=request.url.scheme == "https",
+        max_age=AUTH_FORM_CSRF_MAX_AGE_SECONDS,
+        path="/",
+    )
+    return _no_store(response)
+
+
+def _auth_form_is_valid(request: Request, submitted_token: str) -> bool:
+    return auth_form_request_is_valid(
+        request,
+        request.cookies.get(AUTH_FORM_CSRF_COOKIE_NAME),
+        submitted_token,
+    )
+
+
+def _auth_timeout_message(action: str, seconds: int) -> str:
+    return (
+        f"Too many incorrect password attempts. Church Cap has paused {action} for {seconds} seconds "
+        "to protect operator controls. Wait for the timeout to finish, then try again. "
+        "Captions and connected viewers are not affected."
+    )
+
+
+def _operator_csrf_for_request(request: Request) -> str:
+    session_token = request.cookies.get(COOKIE_NAME) or ""
+    return create_operator_csrf_token(session_token, auth_config())
 
 
 def _qr_data_uri(value: str) -> str:
@@ -588,6 +667,12 @@ def service_leader_language_context() -> dict:
         "requestable_languages": requestable,
         "language_requests": language_request_items() if requests_enabled else [],
         "selected_languages": sorted(selected_codes),
+        "active_translated_languages": list(hub.active_translated_languages()),
+        "viewer_language_counts": {
+            str(code): int(count)
+            for code, count in hub.language_counts().items()
+            if int(count or 0) > 0
+        },
     }
 
 
@@ -696,6 +781,7 @@ def security_state(request: Request | None = None) -> dict:
     runtime = load_runtime_config()
     lock_localhost = bool(runtime.get("lock_operator_to_localhost", settings.lock_operator_to_localhost))
     dual = bool(settings.dual_port_mode)
+    auth_storage = protect_auth_storage()
     return {
         "dual_port_mode": dual,
         "viewer_port": settings.viewer_port if dual else settings.port,
@@ -708,6 +794,7 @@ def security_state(request: Request | None = None) -> dict:
         "service_leader_url": f"{service_leader_base_url(request)}/service-leader",
         "offline_https_note": "Fully offline trusted HTTPS on visitor phones is not possible unless their device already trusts the certificate.",
         "data_dir": str(app_support_dir()),
+        "auth_storage": auth_storage,
     }
 
 
@@ -1536,6 +1623,12 @@ async def security_boundary_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def browser_security_headers(request: Request, call_next):
+    # Registered after the network boundary so it remains the outer HTTP layer
+    # and also decorates boundary redirects and rejection responses.
+    response = await call_next(request)
+    return _apply_security_headers(response)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1548,7 +1641,7 @@ async def index(request: Request):
             "languages": SUPPORTED_LANGUAGES,
             "ui_strings": get_client_ui_strings(),
             "ui_string_sources": get_client_ui_sources(language["code"] for language in SUPPORTED_LANGUAGES),
-            "translation_state": safe_translation_state(),
+            "translation_state": public_translation_state(),
         },
     )
 
@@ -1620,23 +1713,37 @@ async def setup_page(request: Request):
     config = auth_config()
     if not config.needs_setup:
         return RedirectResponse("/operator", status_code=303)
-    return template_response("setup.html", {**base_template_context(request), "error": None})
+    return _render_auth_page(request, "setup.html", {"error": None})
 
 
 @app.post("/setup")
-async def setup_operator(request: Request, password: str = Form(...), confirm_password: str = Form(...), security_mode: str = Form("secure_operator")):
+async def setup_operator(
+    request: Request,
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    security_mode: str = Form("secure_operator"),
+    csrf_token: str = Form(""),
+):
     config = auth_config()
     if not config.needs_setup:
         return RedirectResponse("/operator", status_code=303)
+    if not _auth_form_is_valid(request, csrf_token):
+        return _render_auth_page(
+            request,
+            "setup.html",
+            {"error": "This setup page expired or came from another site. Refresh Church Cap and try again."},
+            status_code=403,
+        )
     if password != confirm_password:
-        return template_response("setup.html", {**base_template_context(request), "error": "Passwords do not match."}, status_code=400)
+        return _render_auth_page(request, "setup.html", {"error": "Passwords do not match."}, status_code=400)
     try:
         set_operator_password(password)
         set_security_config(security_mode)
     except ValueError as exc:
-        return template_response("setup.html", {**base_template_context(request), "error": str(exc)}, status_code=400)
+        return _render_auth_page(request, "setup.html", {"error": str(exc)}, status_code=400)
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(COOKIE_NAME)
+    response.delete_cookie(AUTH_FORM_CSRF_COOKIE_NAME, path="/")
     return response
 
 
@@ -1646,28 +1753,59 @@ async def login_page(request: Request):
         return RedirectResponse("/setup", status_code=303)
     # Clear any stale cookie left from a previous server run so operators can
     # sign back in cleanly after Sunday-morning restarts.
-    response = template_response("login.html", {**base_template_context(request), "error": None})
+    response = _render_auth_page(request, "login.html", {"error": None, "service_leader_error": None})
     response.delete_cookie(COOKIE_NAME)
     return response
 
 
 @app.post("/service-leader/pairing/create", response_class=HTMLResponse)
-async def create_service_leader_pairing(request: Request, service_leader_password: str = Form(...)):
+async def create_service_leader_pairing(
+    request: Request,
+    service_leader_password: str = Form(...),
+    csrf_token: str = Form(""),
+):
     if not is_local_client(request):
         return JSONResponse({"detail": "Create service-leader pairing codes on the Church Cap computer."}, status_code=403)
-    config = auth_config()
-    if not password_is_valid(service_leader_password, config):
-        response = template_response(
+    if not _auth_form_is_valid(request, csrf_token):
+        return _render_auth_page(
+            request,
             "login.html",
             {
-                **base_template_context(request),
                 "error": None,
-                "service_leader_error": "Incorrect operator password.",
+                "service_leader_error": "This pairing page expired or came from another site. Refresh Church Cap and try again.",
             },
-            status_code=401,
+            status_code=403,
         )
+    config = auth_config()
+    key = throttle_key(request, "service-leader-pairing")
+    retry_after = authentication_throttle.retry_after(key)
+    if retry_after:
+        response = _render_auth_page(
+            request,
+            "login.html",
+            {"error": None, "service_leader_error": _auth_timeout_message("pairing", retry_after)},
+            status_code=429,
+        )
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+    if not password_is_valid(service_leader_password, config):
+        retry_after = authentication_throttle.record_failure(key)
+        response = _render_auth_page(
+            request,
+            "login.html",
+            {
+                "error": None,
+                "service_leader_error": (
+                    _auth_timeout_message("pairing", retry_after) if retry_after else "Incorrect operator password."
+                ),
+            },
+            status_code=429 if retry_after else 401,
+        )
+        if retry_after:
+            response.headers["Retry-After"] = str(retry_after)
         response.delete_cookie(COOKIE_NAME)
-        return _no_store(response)
+        return response
+    authentication_throttle.reset(key)
     token = service_leader_access.create_pairing()
     pairing_url = f"{service_leader_base_url(request)}/service-leader/pair#{token}"
     response = template_response(
@@ -1679,6 +1817,7 @@ async def create_service_leader_pairing(request: Request, service_leader_passwor
             "service_leader_url": f"{service_leader_base_url(request)}/service-leader",
         },
     )
+    response.delete_cookie(AUTH_FORM_CSRF_COOKIE_NAME, path="/")
     return _no_store(response)
 
 
@@ -1741,6 +1880,7 @@ async def service_leader_status(request: Request, session: ServiceLeaderSession 
         "current": state.current.text if state.current else "",
         "audio_rms": metrics.get("audio_rms"),
         "audio_peak": metrics.get("audio_peak"),
+        "audio_warning": metrics.get("audio_input_warning"),
         "viewers": state.viewers,
         "translation": service_leader_language_context(),
         "audio": service_leader_audio_context(),
@@ -1765,28 +1905,60 @@ async def legacy_pastor_redirect(legacy_path: str = ""):
 
 
 @app.post("/login")
-async def login(request: Request, password: str = Form(...)):
-    config = auth_config()
-    if not password_is_valid(password, config):
-        return template_response(
+async def login(request: Request, password: str = Form(...), csrf_token: str = Form("")):
+    if not _auth_form_is_valid(request, csrf_token):
+        return _render_auth_page(
+            request,
             "login.html",
-            {**base_template_context(request), "error": "Incorrect password."},
-            status_code=401,
+            {
+                "error": "Church Cap could not verify this login page, so your password was not checked or changed. Reload the login page and try again.",
+                "service_leader_error": None,
+            },
+            status_code=403,
         )
+    config = auth_config()
+    key = throttle_key(request, "operator-login")
+    retry_after = authentication_throttle.retry_after(key)
+    if retry_after:
+        response = _render_auth_page(
+            request,
+            "login.html",
+            {"error": _auth_timeout_message("sign-in", retry_after), "service_leader_error": None},
+            status_code=429,
+        )
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+    if not password_is_valid(password, config):
+        retry_after = authentication_throttle.record_failure(key)
+        response = _render_auth_page(
+            request,
+            "login.html",
+            {
+                "error": _auth_timeout_message("sign-in", retry_after) if retry_after else "Incorrect password.",
+                "service_leader_error": None,
+            },
+            status_code=429 if retry_after else 401,
+        )
+        if retry_after:
+            response.headers["Retry-After"] = str(retry_after)
+        return response
+    authentication_throttle.reset(key)
     response = RedirectResponse("/operator", status_code=303)
     response.set_cookie(
         COOKIE_NAME,
         create_session_token(config),
         httponly=True,
-        samesite="lax",
+        samesite="strict",
         max_age=config.max_age_seconds,
         secure=request.url.scheme == "https",
     )
+    response.delete_cookie(AUTH_FORM_CSRF_COOKIE_NAME, path="/")
     return response
 
 
 @app.post("/logout")
-async def logout(_: None = Depends(require_operator)):
+async def logout(request: Request, csrf_token: str = Form(""), _: None = Depends(require_operator)):
+    require_operator_mutation(request, csrf_token)
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(COOKIE_NAME)
     return response
@@ -1794,7 +1966,15 @@ async def logout(_: None = Depends(require_operator)):
 
 @app.get("/account", response_class=HTMLResponse)
 async def account_page(request: Request, _: None = Depends(require_operator)):
-    return template_response("account.html", {"request": request, "church_name": settings.church_name, "error": None, "success": None})
+    return template_response(
+        "account.html",
+        {
+            **base_template_context(request),
+            "error": None,
+            "success": None,
+            "csrf_token": _operator_csrf_for_request(request),
+        },
+    )
 
 
 @app.post("/account/password")
@@ -1803,19 +1983,21 @@ async def change_operator_password(
     current_password: str = Form(...),
     new_password: str = Form(...),
     confirm_password: str = Form(...),
+    csrf_token: str = Form(""),
     _: None = Depends(require_operator),
 ):
+    require_operator_mutation(request, csrf_token)
     config = auth_config()
     if not password_is_valid(current_password, config):
-        return template_response("account.html", {"request": request, "church_name": settings.church_name, "error": "Current password is incorrect.", "success": None}, status_code=400)
+        return template_response("account.html", {**base_template_context(request), "error": "Current password is incorrect.", "success": None, "csrf_token": _operator_csrf_for_request(request)}, status_code=400)
     if new_password != confirm_password:
-        return template_response("account.html", {"request": request, "church_name": settings.church_name, "error": "New passwords do not match.", "success": None}, status_code=400)
+        return template_response("account.html", {**base_template_context(request), "error": "New passwords do not match.", "success": None, "csrf_token": _operator_csrf_for_request(request)}, status_code=400)
     try:
         set_operator_password(new_password)
         service_leader_access.revoke_all()
     except ValueError as exc:
-        return template_response("account.html", {"request": request, "church_name": settings.church_name, "error": str(exc), "success": None}, status_code=400)
-    response = template_response("account.html", {"request": request, "church_name": settings.church_name, "error": None, "success": "Password changed. Please sign in again."})
+        return template_response("account.html", {**base_template_context(request), "error": str(exc), "success": None, "csrf_token": _operator_csrf_for_request(request)}, status_code=400)
+    response = template_response("account.html", {**base_template_context(request), "error": None, "success": "Password changed. Please sign in again.", "csrf_token": ""})
     response.delete_cookie(COOKIE_NAME)
     return response
 
@@ -1844,6 +2026,7 @@ async def operator(request: Request, _: None = Depends(require_operator)):
             "translation_provider": settings.translation_provider,
             "security": security_state(request),
             "service_leader_access": service_leader_access.access_state(),
+            "csrf_token": _operator_csrf_for_request(request),
         },
     )
 
@@ -1987,23 +2170,11 @@ async def download_handoff(request: Request, token: str):
 
 @app.get("/health")
 async def health():
-    performance = effective_performance_config()
     return {
         "ok": True,
         "status": hub.state().status,
         "app_version": settings.app_version,
         "app_version_label": settings.app_version_label,
-        "deployment": safe_deployment_context(safe_hardware_acceleration()),
-        "viewers": hub.viewer_count,
-        "mode": performance["transcriber_mode"],
-        "audio_device": selected_audio_device(),
-        "sensitive_mode": hub.sensitive_mode,
-        "profanity_filter_enabled": bool(load_runtime_config().get("profanity_filter_enabled", True)),
-        "hostname": detected_local_hostname(),
-        "base_url": base_url(),
-        "ip_base_url": ip_base_url(),
-        "translation": safe_translation_state(),
-        "security": security_state(),
     }
 
 
@@ -2873,7 +3044,7 @@ async def request_language(request: Request):
     except Exception:
         body = {}
     submit_language_request(str(body.get("language") or body.get("code") or ""))
-    return {"status": "requested", "translation": safe_translation_state()}
+    return {"status": "requested", "translation": public_translation_state()}
 
 
 @app.post("/service-leader/api/language-requests")
@@ -2884,8 +3055,7 @@ async def service_leader_request_language(request: Request, session: ServiceLead
     return {"status": "requested", "translation": service_leader_language_context()}
 
 
-@app.post("/api/language-requests/{language}/accept")
-async def accept_language_request(language: str, _: None = Depends(require_operator)):
+def accept_language_request_action(language: str) -> None:
     code = normalise_language(language)
     if code == SOURCE_LANGUAGE or code not in LANGUAGE_BY_CODE:
         raise HTTPException(status_code=400, detail="Choose a supported translated language.")
@@ -2917,13 +3087,43 @@ async def accept_language_request(language: str, _: None = Depends(require_opera
         timing_mode=cfg["translation_timing_mode"],
     )
     _language_requests.pop(code, None)
+
+
+def reject_language_request_action(language: str) -> None:
+    _language_requests.pop(normalise_language(language), None)
+
+
+@app.post("/service-leader/api/language-requests/{language}/accept")
+async def service_leader_accept_language_request(
+    language: str,
+    request: Request,
+    session: ServiceLeaderSession = Depends(require_service_leader),
+):
+    require_service_leader_mutation(request, session)
+    accept_language_request_action(language)
+    return {"status": "accepted", "translation": service_leader_language_context()}
+
+
+@app.post("/service-leader/api/language-requests/{language}/reject")
+async def service_leader_reject_language_request(
+    language: str,
+    request: Request,
+    session: ServiceLeaderSession = Depends(require_service_leader),
+):
+    require_service_leader_mutation(request, session)
+    reject_language_request_action(language)
+    return {"status": "rejected", "translation": service_leader_language_context()}
+
+
+@app.post("/api/language-requests/{language}/accept")
+async def accept_language_request(language: str, _: None = Depends(require_operator)):
+    accept_language_request_action(language)
     return {"status": "accepted", "translation": safe_translation_state()}
 
 
 @app.post("/api/language-requests/{language}/reject")
 async def reject_language_request(language: str, _: None = Depends(require_operator)):
-    code = normalise_language(language)
-    _language_requests.pop(code, None)
+    reject_language_request_action(language)
     return {"status": "rejected", "translation": safe_translation_state()}
 
 
@@ -3021,7 +3221,7 @@ async def languages():
         "languages": SUPPORTED_LANGUAGES,
         "ui_strings": get_client_ui_strings(),
         "ui_string_sources": get_client_ui_sources(language["code"] for language in SUPPORTED_LANGUAGES),
-        "translation": safe_translation_state(),
+        "translation": public_translation_state(),
     }
 
 

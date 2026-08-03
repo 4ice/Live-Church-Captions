@@ -18,7 +18,7 @@ if [[ ! -d ".venv" ]]; then
 fi
 
 source .venv/bin/activate
-python -m pip install --upgrade "setuptools<82" wheel
+python -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 python -m pip install -r requirements-translation.txt
 cat <<'MSG'
 
@@ -31,6 +31,7 @@ This requires internet access now, but live translation itself runs locally afte
 MSG
 python - <<PY
 from argostranslate import package
+from app.translation_packages import validate_argos_package_archive
 SCOPE = "$INSTALL_SCOPE"
 COMMON_TARGETS = ["es", "fr", "pt", "pl", "uk", "ar", "fa", "zh", "zt"]
 print("Updating Argos package index…")
@@ -51,6 +52,7 @@ for target in targets:
     pkg = candidates[0]
     print(f"Downloading/installing en->{target}: {pkg.package_version}…")
     path = pkg.download()
+    validate_argos_package_archive(path)
     package.install_from_path(path)
     installed.append(target)
 print("\nInstalled target languages:", ", ".join(installed) or "none")

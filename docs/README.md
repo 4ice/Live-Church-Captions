@@ -28,7 +28,8 @@ This folder keeps reference material out of the project root.
 
 - `project/BLUEPRINT.md`
 - `project/ROADMAP_TO_V1.md`
-- `project/V0.7.3_IMPLEMENTATION.md`
-- `project/V0.7.3_RELEASE_NOTES.md`
-- `project/Church_Cap_v0.7.3_Action_Plan.docx`
+- `project/V0.7.4_IMPLEMENTATION.md`
+- `project/V0.7.4_RELEASE_NOTES.md`
+- `project/V0.7.4_ACCEPTANCE_TEST_FRAMEWORK.md`
+- `project/Church_Cap_v0.7.4_Action_Plan.docx` (retained pilot baseline)
 - `project/TRANSLATION_MODEL_RESEARCH.md`

@@ -29,7 +29,7 @@ from app.metrics import (
 )
 from app.text_cleanup import clean_caption_text, collapse_repeated_phrase
 from app.transcription.base import Transcriber
-from app.transcription.audio_input import input_default_sample_rate, resample_mono
+from app.transcription.audio_input import audio_input_health, input_default_sample_rate, resample_mono
 from app.hardware import detect_hardware_acceleration, resolve_whisper_runtime
 from app.transcription.streaming_words import (
     IncompleteEdgeGuard,
@@ -97,6 +97,8 @@ class FasterWhisperTranscriber(Transcriber):
         self._max_buffer_samples = int(self.sample_rate * max(self.window_seconds + 2.0, 8.0))
         self._buffered_samples = 0
         self._audio_end_monotonic = 0.0
+        self._audio_stream_started_at = 0.0
+        self._audio_nonzero_seen = False
         self._trim_before_monotonic = 0.0
         self._last_voice_at = 0.0
         self._last_partial = ""
@@ -132,11 +134,25 @@ class FasterWhisperTranscriber(Transcriber):
         rms = float(np.sqrt(np.mean(np.square(audio)))) if audio.size else 0.0
         peak = float(np.max(np.abs(audio))) if audio.size else 0.0
         now = time.monotonic()
+        self._audio_nonzero_seen, input_warning = audio_input_health(
+            audio,
+            stream_started_at=self._audio_stream_started_at,
+            now=now,
+            nonzero_seen=self._audio_nonzero_seen,
+        )
         has_voice = rms >= self.min_rms
         if has_voice:
             self._last_voice_at = now
         voice_age = None if self._last_voice_at <= 0 else now - self._last_voice_at
-        update_metrics(audio_rms=rms, audio_peak=peak, has_recent_voice=has_voice or self._has_recent_voice(), last_voice_age_seconds=voice_age, last_update_at=now)
+        update_metrics(
+            audio_rms=rms,
+            audio_peak=peak,
+            audio_stream_open=True,
+            audio_input_warning=input_warning,
+            has_recent_voice=has_voice or self._has_recent_voice(),
+            last_voice_age_seconds=voice_age,
+            last_update_at=now,
+        )
         with self._audio_lock:
             self._audio_buffer.append(audio)
             self._buffered_samples += audio.size
@@ -148,6 +164,8 @@ class FasterWhisperTranscriber(Transcriber):
     def _start_audio_stream(self) -> None:
         def open_stream(device, samplerate: int):
             self.input_sample_rate = int(samplerate)
+            self._audio_stream_started_at = time.monotonic()
+            self._audio_nonzero_seen = False
             stream = sd.InputStream(
                 samplerate=self.input_sample_rate,
                 channels=1,
@@ -157,7 +175,12 @@ class FasterWhisperTranscriber(Transcriber):
                 callback=self._audio_callback,
             )
             stream.start()
-            update_metrics(audio_device=device, sample_rate=self.sample_rate)
+            update_metrics(
+                audio_device=device,
+                sample_rate=self.sample_rate,
+                audio_stream_open=True,
+                audio_input_warning=None,
+            )
             return stream
 
         def open_with_native_rate(device, original_error: Exception):
@@ -429,8 +452,8 @@ class FasterWhisperTranscriber(Transcriber):
 
     async def stream(self) -> AsyncIterator[CaptionSegment]:
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(self._executor, self._load_model)
         self._start_audio_stream()
+        await loop.run_in_executor(self._executor, self._load_model)
         pending_final_text = ""
         pending_final_spans: list[RecognitionSpan] = []
         pending_capture_started: float | None = None
@@ -539,4 +562,5 @@ class FasterWhisperTranscriber(Transcriber):
                 self._stream.close()
             except Exception:
                 pass
+        update_metrics(audio_stream_open=False, audio_input_warning=None)
         self._executor.shutdown(wait=False, cancel_futures=True)

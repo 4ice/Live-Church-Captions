@@ -1,6 +1,6 @@
 # Church Cap
 
-Version: **v0.7.3**
+Version: **v0.7.4**
 
 ![Church Cap logo](assets/branding/church-cap-wide-dark.png)
 
@@ -23,9 +23,9 @@ For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
 - `config/` — editable glossary and profanity-filter additions.
 - `docs/` — user guides, legal notes, architecture, networking, and translation docs.
 - `docs/project/ROADMAP_TO_V1.md` — staged route from the v0.6 preview architecture to v1.0.0.
-- `docs/project/V0.7.3_IMPLEMENTATION.md` — v0.7.3 action-plan mapping, scope, and Linux acceptance gates.
-- `docs/project/V0.7.3_RELEASE_NOTES.md` — commit summary and GitHub release wording for v0.7.3.
-- `docs/project/Church_Cap_v0.7.3_Action_Plan.docx` — current pilot action plan and validation status.
+- `docs/project/V0.7.4_IMPLEMENTATION.md` — v0.7.4 presentation and security scope, mitigations, and acceptance gates.
+- `docs/project/V0.7.4_RELEASE_NOTES.md` — commit summary and GitHub release wording for v0.7.4.
+- `docs/project/Church_Cap_v0.7.4_Action_Plan.docx` — retained pilot action-plan baseline; v0.7.4 status is recorded in the implementation notes.
 - `docs/project/TRANSLATION_MODEL_RESEARCH.md` — commercial/open-source model and licence audit for contextual and Chinese translation.
 - `.github/` — GitHub-standard contribution, security, code of conduct, issue, pull request, and CI files.
 - `docker/` — optional Docker development files.
@@ -37,6 +37,7 @@ For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
 - QR codes for audience access, including hostname and IP fallback links.
 - Mobile caption page with a viewport-bounded, internally scrollable accumulated Live feed for English and every translated language, plus an optional independently scrollable session transcript that starts closed on each visit. A word-timestamp-aware cue ledger shows safe English words immediately, briefly guards only a weak word at the live audio edge, and updates corrected wording in place before sealing it into the shared reader. The page also includes newest-first timestamps, font size, automatic system light/dark theme with local override, comfort/compact, pause, and local clear controls. Dismissing viewer notices returns their space to the caption panels without making the page longer.
 - Operator login, first-run password setup, and account/password page.
+- Same-origin request tokens for first-run setup, login, pairing, operator forms, and operator API changes, plus bounded password-attempt pauses with a clear operator-facing explanation.
 - Privacy-safe service measurements retained across restarts, with separate English operational-response and rolling-window estimates, stage timing, provider/scheduler outcomes, viewer-seconds, process/system resource aggregates, and a separate anonymised report.
 - One-use QR pairing for a restricted service-leader page with start/stop, private-moment, status, and multi-language controls.
 - Operator feedback page with version-aware email link, plus a dedicated Diagnostics menu for support exports and a Storage use view with opt-in cleanup of inactive model downloads and archived logs.
@@ -49,10 +50,10 @@ For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
 - Bad-word censor for likely speech-to-text mistakes.
 - Sensitive blank/pause mode for private or pastoral moments, with audience notices rendered through the selected client UI language where available.
 - Transcript retention controls, encrypted local transcript cache, operator current-session transcript export as `.txt`, `.vtt`, `.srt`, and `.json`, plus restricted Service Leader TXT/VTT transcript export for appliance support after a privacy warning.
-- OBS browser-source overlay and setup guide. The `/display` and `/obs` caption surfaces use the same subtle line glide and trailing-word entry animation as the phone viewer, with a stable two-line layout to reduce jumpy text on room screens and livestream overlays.
+- OBS browser-source overlay and setup guide. The `/display` and `/obs` surfaces now share one polished two-line presentation policy: finalized cues remain immediate, live English drafts expose only the server-confirmed prefix, unstable revisions retain the last good wording, and both outputs use the same line-planning policy and subtle motion while preserving their surface-specific styling.
 - On Church Cap appliances, local Display and OBS previews stay on the appliance shell origin so the persistent Home/System controls remain available and failed preview routes can return to the local recovery environment.
 - Local multilingual support: phone UI labels use the lightweight catalogue in `app/locales/client_ui.json`, with Argos runtime fallback where needed. Experimental translated captions use package-style choices: **Recommended package** CTranslate2 INT8 / SMaLL-100, **Base package** Argos Translate, **Compatibility package** PyTorch SMaLL-100, or **Auto** mode across installed packages.
-- v0.7.0 introduced real Faster-Whisper word timestamps and confidence, guarded weak words at the captured-audio edge, timestamp-driven removal of sealed audio, correction-in-place, and Responsive Context translation. v0.7.2 added updater recovery and operator clarity. v0.7.3 prevents silence-only or low-confidence Whisper hypotheses from replacing the last speech-backed caption and measures those interventions without retaining words.
+- v0.7.0 introduced real Faster-Whisper word timestamps and confidence, guarded weak words at the captured-audio edge, timestamp-driven removal of sealed audio, correction-in-place, and Responsive Context translation. v0.7.2 added updater recovery and operator clarity. v0.7.3 prevents silence-only or low-confidence Whisper hypotheses from replacing the last speech-backed caption. v0.7.4 applies Room Display's calmer confirmed-prefix presentation policy to OBS, protects state-changing operator requests, bounds password guessing, validates Argos archives, and pins and verifies SMaLL-100 resources.
 - Local HTTPS helper scripts for testing and managed-device deployments.
 - macOS, Windows, and Linux setup/start support, permission repair/password reset, and macOS LaunchAgent helper scripts.
 
@@ -166,7 +167,7 @@ More detail: [docs/linux.md](docs/linux.md).
 
 ## Recorded Sermon Testing
 
-v0.7.3 advances service metrics to schema 11. Reports identify cue-engine v5 and the `silero_endpoint_progress_publication_guard_v3` strategy, including text-free counts for low-confidence hypotheses, post-speech hypotheses that were suppressed, speech-bounded inference passes, and total trailing silence removed before recognition. Silero VAD now uses streaming-oriented endpoint settings, and a repeated pass over identical post-speech audio cannot confirm a weak new final word. Existing word-timestamp, edge-guard, cadence, translation, cue, queue, shutdown, and resource measurements remain available. The report retains no audio, recognition timestamps, confidence values, caption text, or translation text. Download the separate anonymised service report and follow [docs/recorded-sermon-testing.md](docs/recorded-sermon-testing.md).
+v0.7.4 retains service-metrics schema 11 from v0.7.3. Reports identify cue-engine v5 and the `silero_endpoint_progress_publication_guard_v3` strategy, including text-free counts for low-confidence hypotheses, post-speech hypotheses that were suppressed, speech-bounded inference passes, and total trailing silence removed before recognition. Existing word-timestamp, edge-guard, cadence, translation, cue, queue, shutdown, and resource measurements remain available. The report retains no audio, recognition timestamps, confidence values, caption text, or translation text. Download the separate anonymised service report and follow [docs/recorded-sermon-testing.md](docs/recorded-sermon-testing.md).
 
 ## Normal Use
 
@@ -263,6 +264,8 @@ On macOS, if no audio devices are listed, make sure microphone permission is all
 System Settings -> Privacy & Security -> Microphone
 ```
 
+The permission belongs to the app that launches Church Cap, which is usually Terminal for `start-macos.sh`. Fully restart Church Cap after changing it. The built-in MacBook microphone may be unavailable with the lid closed in clamshell mode; open the lid or select an iPhone, USB, or other external input. On Windows, enable both microphone and desktop-app access. On Linux, check the selected PipeWire, PulseAudio, or ALSA capture source and mute state. Church Cap opens the audio input before loading the speech model. If the stream opens but supplies exact digital silence for three seconds, the Operator page shows a non-blocking platform-specific warning; it clears as soon as real samples arrive. This health check does not record or retain audio.
+
 ## Performance Tuning
 
 Open `/operator`, then use **Performance** on the dashboard.
@@ -289,7 +292,7 @@ Operator → **Diagnostics → Storage use** shows the application, local data, 
 /setup/network     local hostname/HTTPS/Wi-Fi guidance, login required
 /qr.png            hostname QR code
 /qr-ip.png         LAN IP fallback QR code
-/health            basic health check
+/health            minimal public readiness, service status, and version check
 /transcript.txt    current-session transcript export, operator login required
 /transcript.vtt    current-session WebVTT export, operator login required
 /transcript.srt    current-session SRT export, operator login required
@@ -300,9 +303,9 @@ Operator → **Diagnostics → Storage use** shows the application, local data, 
 
 ## Translation
 
-Phone UI language selection is local and lightweight. In Manual / restricted language mode, visitor and Service Leader language pickers can show installed languages that are not currently enabled and let someone request them; the operator receives a floating request card and can accept or reject the language without changing the active translation capacity limit. The visitor page uses static strings from `app/locales/client_ui.json` first, including manual fallback strings for languages Argos does not cover. If a selected language is not in that file, Church Cap asks the local Base / Argos provider to translate the small set of UI labels at runtime, then falls back to English if the needed Argos pack is not installed. This UI path is separate from live caption translation routing and does not require captions to be running. Audience language lists show compact Unicode flag chips and keep the language code in the language text. Operator and Service Leader lists keep compact flag/code chips for admin readability. Search matches language codes, English names, native names, and accented names. When a platform does not render emoji flags reliably, Church Cap still shows the language code in the option text or fallback badge.
+Phone UI language selection is local and lightweight. In Manual / restricted language mode, visitor and Service Leader language pickers can show installed languages that are not currently enabled and let someone request them; the Operator and paired Service Leader receive floating request cards and can accept or reject a language without changing the active translation capacity limit. The Service Leader card drops over the top section of the page and also shows current translation-slot use and read-only viewer demand. The visitor page uses static strings from `app/locales/client_ui.json` first, including manual fallback strings for languages Argos does not cover. If a selected language is not in that file, Church Cap asks the local Base / Argos provider to translate the small set of UI labels at runtime, then falls back to English if the needed Argos pack is not installed. This UI path is separate from live caption translation routing and does not require captions to be running. Audience language lists show compact Unicode flag chips and keep the language code in the language text. Operator and Service Leader lists keep compact flag/code chips for admin readability. Search matches language codes, English names, native names, and accented names. When a platform does not render emoji flags reliably, Church Cap still shows the language code in the option text or fallback badge.
 
-The operator dashboard shows a steady loading notice while captions start and the local speech model/audio input are being prepared. On Linux, Church Cap first tries the configured 16 kHz capture rate and, if a USB audio interface only opens at its native rate such as 48 kHz, captures at that native rate and resamples internally for Whisper. Audio input saves prefer the device name rather than the volatile PortAudio index, so USB devices are less likely to break after reboot or re-enumeration. On visitor phones, changing language during an active caption stream shows a small in-card loading notice that does not move the caption layout; it is not shown on an empty waiting screen. When translated captions are disabled, the visitor language menu clearly explains that translated captions are unavailable and keeps the source-caption option available. Visitor and Service Leader pages request the browser's native screen wake lock where supported and release it when the page is hidden. Some mobile browsers may still dim or sleep the device when wake lock is unavailable or rejected, especially over plain local HTTP. The display and OBS pages share the phone caption renderer so new words ease in and existing lines glide instead of the whole overlay snapping on every update.
+The operator dashboard shows a steady loading notice while captions start and the local audio input/speech model are being prepared. Audio capture opens first so permission or routing problems are visible on the microphone meter while the model loads. If an open stream supplies exact digital silence for three seconds, the Operator page shows a non-blocking platform-specific warning. On Linux, Church Cap first tries the configured 16 kHz capture rate and, if a USB audio interface only opens at its native rate such as 48 kHz, captures at that native rate and resamples internally for Whisper. Audio input saves prefer the device name rather than the volatile PortAudio index, so USB devices are less likely to break after reboot or re-enumeration. On visitor phones, changing language during an active caption stream shows a small in-card loading notice that does not move the caption layout; it is not shown on an empty waiting screen. When translated captions are disabled, the visitor language menu clearly explains that translated captions are unavailable and keeps the source-caption option available. Visitor and Service Leader pages request the browser's native screen wake lock where supported and release it when the page is hidden. Some mobile browsers may still dim or sleep the device when wake lock is unavailable or rejected, especially over plain local HTTP. The display and OBS pages share the phone caption renderer so new words ease in and existing lines glide instead of the whole overlay snapping on every update.
 
 Translated captions are separate, experimental, and resource-heavy. Whisper performs speech-to-text; it does not translate one English caption stream into every viewer language by itself. Real translated captions require a translation provider. Church Cap supports **Recommended package / CTranslate2 INT8 SMaLL-100**, **Base package / Argos Translate**, **Compatibility package / PyTorch SMaLL-100**, and **Auto / Recommended + Base + Compatibility** modes.
 
@@ -379,7 +382,7 @@ AI-generated captions may be inaccurate. For high-stakes, confidential, legal, s
 
 On the Church Cap computer, either select **Connect a service leader device** on the operator login page or open **Service Leader** in the operator menu. Generate a one-use QR code, then scan it with the church phone or tablet. The operator section can replace or cancel an unused QR, show connected-device status, and disconnect all paired devices.
 
-The paired page can start, stop, blank, resume, change the audio input while captions are stopped, monitor caption health, share audience QR codes through a temporary phone-download QR, export the current-session transcript, share redacted support logs after an explicit warning, and manage translated captions in Automatic or Manual language mode. On appliance profiles, the Operator Audience & OBS QR buttons use the same temporary phone-download handoff instead of saving files to the kiosk. When the operator sets Manual / restricted availability, the Service Leader and audience language pickers only show the selected languages. Its searchable language list matches native names, English names, language codes, and uses the same flag/code chips as the operator language page. Language and audio choices stay synchronised with the operator page. The operator and Service Leader controls show a subtle active-state glow, and short action messages explain when captions are starting, stopping, blanked, resuming, or sending a test caption. The caption preview uses the same live feed as audience phones, but the page warns that a control-device delay is not the main performance measure. It cannot access updates, passwords, performance settings, account/privacy settings, or model installation. Pairing expires after 90 seconds and the restricted session expires after four hours or two hours of inactivity, with an on-device warning before the inactivity timer runs out.
+The paired page can start, stop, blank, resume, change the audio input while captions are stopped, monitor caption health, share audience QR codes through a temporary phone-download QR, export the current-session transcript, share redacted support logs after an explicit warning, and manage translated captions in Automatic or Manual language mode. It receives incoming audience language requests in a top-down Accept/Reject card and shows active translation slots and viewer-language demand without exposing performance or model controls. Its microphone monitor also shows the Operator's digital-silence troubleshooting warning when an open input supplies no signal. On appliance profiles, the Operator Audience & OBS QR buttons use the same temporary phone-download handoff instead of saving files to the kiosk. When the operator sets Manual / restricted availability, the Service Leader and audience language pickers only show the selected languages. Its searchable language list matches native names, English names, language codes, and uses the same flag/code chips as the operator language page. Language and audio choices stay synchronised with the operator page. The operator and Service Leader controls show a subtle active-state glow, and short action messages explain when captions are starting, stopping, blanked, resuming, or sending a test caption. The caption preview uses the same live feed as audience phones, but the page warns that a control-device delay is not the main performance measure. It cannot access updates, passwords, performance settings, account/privacy settings, or model installation. Pairing expires after 90 seconds and the restricted session expires after four hours or two hours of inactivity, with an on-device warning before the inactivity timer runs out.
 
 The page uses the configured operator port, normally `9090`. In secure operator mode, full operator routes remain localhost-only while `/service-leader` is available to paired devices. On HTTP, use a trusted staff/AV network; HTTPS is preferred for managed church devices.
 
@@ -469,7 +472,7 @@ Manual local setup:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
+python -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 python -m pip install -r requirements.txt
 cp env.example .env
 ./scripts/run-dev.sh
@@ -477,11 +480,19 @@ cp env.example .env
 
 Recommended Python version: **3.12**. Python 3.10 or newer is required by the pinned dependency set.
 
-Run checks:
+Run the core checks:
 
 ```bash
 python -m unittest discover -s tests
 python -m compileall app tests
+```
+
+GitHub CI installs the security tools separately. To run the same security gates locally:
+
+```bash
+python -m pip install "bandit==1.9.4" "pip-audit==2.10.1"
+bandit --quiet --recursive --severity-level high app
+pip-audit --requirement requirements.txt
 ```
 
 ## Release Hygiene

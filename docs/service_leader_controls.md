@@ -13,6 +13,8 @@ The page is intentionally limited to:
 - view colour-coded caption health, English delay, and language delay derived from the same live timing data used by the operator benchmark
 - enable or disable translated captions
 - choose Automatic or Manual translated-language availability from resources already configured by the operator
+- review incoming audience language requests and accept or reject them
+- view the active translation slots and current per-language audience demand
 - share the audience QR code through a temporary phone-download QR
 - export the current-session transcript and share redacted support logs after an explicit warning
 
@@ -91,6 +93,8 @@ The searchable list follows the audience client picker pattern: each result show
 
 The page refreshes its language resources, selected languages, capacity limit, and audio-device list from the server, so operator-side changes appear without re-pairing the device. Service-leader language and audio changes also appear on the operator page during its normal live-status refresh.
 
+Incoming audience requests appear in a floating card that drops down over the top section of the Service Leader screen, making the request immediately visible instead of placing it near the middle of the page. Clearer instructions explain that **Accept** enables the language for the current service while **Reject** dismisses it, and each row shows the language name, request count, and language code. Both actions use the operator's existing active-language limit and the restricted Service Leader session's same-origin request token. The page also shows the translation slots currently in use and read-only viewer demand, so the service leader can make the decision without access to performance, model-installation, update, account, or privacy controls.
+
 ## Caption preview
 
 The caption preview on the service-leader page now observes the same live caption WebSocket used by audience phones, but it is still only a control-page preview. If the page is busy, the device sleeps, or the network reconnects, the preview may appear slightly later than the audience caption page. Use the health card and the audience/client view as the practical performance reference.
@@ -106,3 +110,5 @@ The health card estimates live delay using the latest transcription-pass duratio
 - above 3.5 seconds: slow
 
 The improvement guide suggests a faster performance preset, Faster Whisper, a smaller model, fewer translated languages, a direct audio feed, closing competing workloads, and suitable hardware. Performance settings remain operator-only.
+
+If an open audio stream supplies exact digital silence for three seconds, the same non-blocking, platform-specific troubleshooting warning used by the Operator page appears beneath the microphone monitor. The warning is advisory and does not stop caption startup.
