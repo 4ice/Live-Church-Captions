@@ -49,9 +49,12 @@ Audience caption pages remain open:
 /api/languages
 /api/client-ui/{language}
 /ws/captions
+/ws/translation-audio
 ```
 
 The public `/health` response is deliberately limited to readiness, caption-service status, and the Church Cap version needed by the updater. `/api/languages` exposes only the language availability and request information required by audience devices. Model paths, audio-device information, internal URLs, translation scheduler details, and operator security configuration remain available only through authenticated Operator status and diagnostics.
+
+`/ws/translation-audio` is an opt-in audience stream for a selected translated language. It is separate from the caption socket, accepts only installed manifest-approved languages, and does not grant Operator access. Audio is generated only while listeners are subscribed, held in memory for delivery, and not written to the transcript cache, logs, diagnostics, or service report. The browser stops queued playback when the listener selects **Stop audio**, changes language, leaves the page, or falls too far behind. Sensitive mode clears server queues and prevents in-flight speech from being delivered.
 
 All HTTP pages receive `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a conservative browser `Permissions-Policy`. The policy disables unused camera, location, payment, and USB features but deliberately does not deny microphone access, preserving compatibility with current and future local audio/diagnostic launch paths. Authentication pages continue to block framing and caching. A full Content Security Policy is not enforced yet because Church Cap's current inline operator scripts, Room Display, and OBS paths need a dedicated compatibility migration first.
 
@@ -152,6 +155,8 @@ When secure operator mode is enabled, the operator listener must be reachable on
 
 There are several ways to make `church-cap.local` work.
 
+Linux does not assume that its computer name is published through mDNS. Without an explicit `CAPTION_LOCAL_HOSTNAME` or `PUBLIC_BASE_URL`, Church Cap keeps the hostname QR visible but marks it as requiring setup and recommends the direct-IP QR. Configure Avahi/mDNS or router DNS before advertising a Linux `.local` hostname.
+
 ### Easiest for Mac/iPhone networks: mDNS / Bonjour
 
 Many Apple devices can resolve `.local` hostnames via Bonjour. Set the Mac mini computer name to something like `caption`, then try:
@@ -196,6 +201,8 @@ Minimum rule:
 Allow guest Wi-Fi → caption server IP → TCP 8080 or 8443
 Block guest Wi-Fi → other LAN devices
 ```
+
+On Linux, `setup-linux.sh` detects active `firewalld` or UFW and offers to add the viewer-port rule after explicit confirmation. It opens only the configured viewer TCP port, normally 8080, and does not open operator port 9090. Router and wireless-client isolation remain separate controls.
 
 Do not expose the caption server directly to the public internet unless you have reviewed authentication, HTTPS, logging, transcript retention, and cloud/security implications.
 

@@ -165,7 +165,7 @@ class AuthenticationSecurityTests(unittest.TestCase):
 
     def test_public_payloads_and_headers_do_not_expose_operator_details(self):
         from fastapi.responses import Response
-        from app.main import _apply_security_headers, public_translation_state
+        from app.main import _apply_security_headers, is_public_viewer_path, public_translation_state
 
         detailed = {
             "enabled": True,
@@ -185,11 +185,20 @@ class AuthenticationSecurityTests(unittest.TestCase):
         self.assertNotIn("resources", public)
         self.assertNotIn("scheduler", public)
         self.assertNotIn("provider", public)
+        self.assertTrue(is_public_viewer_path("/ws/captions"))
+        self.assertTrue(is_public_viewer_path("/ws/translation-audio"))
+        self.assertFalse(is_public_viewer_path("/operator/api/status"))
 
         response = _apply_security_headers(Response())
         self.assertEqual(response.headers["x-content-type-options"], "nosniff")
         self.assertEqual(response.headers["referrer-policy"], "no-referrer")
         self.assertNotIn("microphone=()", response.headers["permissions-policy"])
+
+    def test_public_viewer_documents_bypass_stale_browser_cache(self):
+        root = Path(__file__).resolve().parents[1]
+        main = (root / "app/main.py").read_text(encoding="utf-8")
+        viewer_routes = main.split('@app.get("/", response_class=HTMLResponse)', 1)[1].split('@app.get("/obs/help"', 1)[0]
+        self.assertGreaterEqual(viewer_routes.count("return _no_cache(template_response("), 3)
 
     def test_public_health_is_minimal_and_operator_diagnostics_remain_available(self):
         root = Path(__file__).resolve().parents[1]

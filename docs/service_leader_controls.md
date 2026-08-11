@@ -15,10 +15,16 @@ The page is intentionally limited to:
 - choose Automatic or Manual translated-language availability from resources already configured by the operator
 - review incoming audience language requests and accept or reject them
 - view the active translation slots and current per-language audience demand
+- share the audience caption link through the phone's native share menu, including AirDrop on supported Apple devices and installed Android targets such as Quick Share, messaging apps or WhatsApp
+- copy, text or email the audience link when a local HTTP browser cannot expose its native share menu
 - share the audience QR code through a temporary phone-download QR
 - export the current-session transcript and share redacted support logs after an explicit warning
 
 It cannot access updates, passwords, performance settings, translation-model installation, privacy settings, account settings, or other full operator configuration.
+
+The mobile layout keeps the live caption preview, microphone meter, and Start, Stop, Pause, and Resume controls at the top of the page. Secondary tasks sit behind a single-open **On-the-go menu** with three groups: **Service** for caption health and audio input, **Congregation** for joining and languages, and **Tools** for warned logs and transcript exports. Service uses the same single-person icon as Operator → Service Leader, while Tools uses the same diagnostics icon as the Operator menu. Opening one group closes the previous group, and choosing a task shows only its rounded panel without an extra selected-edge stripe. The selected task is retained for the current browser tab so an accidental refresh does not return the service leader to the top of a long settings page. A connection indicator shows whether the control page is receiving fresh status from Church Cap, and the Congregation menu shows a badge when language requests are waiting.
+
+**Share audience link** opens one compact cross-platform panel. Where the Web Share API is available over a secure context, it uses the operating system's normal share sheet; Church Cap does not choose or contact an app itself. Local HTTP browsers that withhold that API still offer Copy link, Text message and Email actions. Every recipient must be on a church network that can reach the Church Cap audience address.
 
 The Start, Stop, Pause, and Resume controls use the same status model as the operator page. The active state has a subtle glow, and short action messages explain when captions are starting, stopping, blanked for a private moment, or resuming. If the operator changes the state from the caption computer, the paired page updates during its normal refresh; if the service leader changes the state, the operator page updates in the same way. The page also requests the browser's native screen wake lock where supported and releases it when hidden, so a church-owned phone or tablet can stay readable during a service without running extra polling or media work in the background.
 
@@ -84,7 +90,7 @@ On AlmaLinux with `firewalld`, allow port 9090 only from the trusted staff/AV ne
 
 The service leader can only choose languages supported by the translation provider and models already installed by the operator. The provider, model installation, and maximum active-language capacity remain operator-controlled.
 
-The page follows the same availability model as the operator page. If the operator sets Restricted language availability, this page only shows the approved language list. Its language list uses the same admin flag/code chips as the operator language picker, with language-code fallback for platforms that do not render emoji flags reliably:
+The page follows the same availability model as the operator page. If the operator sets Restricted language availability, this page only shows the approved language list. Its language list uses the same locally served SVG flag/code chips as the operator language picker, with a language-code fallback if an asset cannot load:
 
 - **Automatic** lets visitors request any supported installed language. Church Cap translates the most-requested languages up to the operator's active-language limit.
 - **Manual** enables only English plus the selected languages. The service leader cannot select more languages than the operator's configured active-language limit.

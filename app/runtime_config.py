@@ -39,6 +39,7 @@ DEFAULTS: dict[str, Any] = {
     "translation_priority_mode": "most_viewers",
     "translation_language_requests_enabled": True,
     "translation_timing_mode": "responsive",
+    "translated_audio_enabled": True,
     "profanity_filter_enabled": True,
     "security_mode": "secure_operator",
     "lock_operator_to_localhost": True,
@@ -76,6 +77,7 @@ def save_runtime_config(config: dict[str, Any]) -> dict[str, Any]:
             cfg["translation_max_active_languages"] = DEFAULTS["translation_max_active_languages"]
         cfg["transcript_saving_enabled"] = bool(cfg["transcript_saving_enabled"])
         cfg["translation_enabled"] = bool(cfg["translation_enabled"])
+        cfg["translated_audio_enabled"] = bool(cfg.get("translated_audio_enabled", True))
         if cfg.get("translation_provider") not in {"disabled", "argos", "ct2small100", "small100", "both", "demo"}:
             cfg["translation_provider"] = "argos"
         if cfg.get("translation_language_policy") not in {"automatic", "restricted"}:
@@ -190,6 +192,12 @@ def set_translation_config(
     if allowed_languages is not None:
         cfg["translation_allowed_languages"] = allowed_languages
     cfg["translation_max_active_languages"] = max_active_languages
+    return save_runtime_config(cfg)
+
+
+def set_translated_audio_config(enabled: bool) -> dict[str, Any]:
+    cfg = load_runtime_config()
+    cfg["translated_audio_enabled"] = bool(enabled)
     return save_runtime_config(cfg)
 
 

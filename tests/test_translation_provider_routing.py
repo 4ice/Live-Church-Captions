@@ -92,13 +92,6 @@ class CT2RuntimeStubTranslator(LocalTranslator):
 
 
 class ResourceStubTranslator(LocalTranslator):
-    def supported_languages_for_provider(self, provider: str) -> list[str]:
-        if provider == "argos":
-            return ["en", "es", "fr", "no"]
-        if provider == "disabled":
-            return ["en"]
-        return super().supported_languages_for_provider(provider)
-
     def translation_resources(self) -> dict:
         return {
             "argos": {
@@ -113,6 +106,10 @@ class ResourceStubTranslator(LocalTranslator):
             "small100": {
                 "languages": [],
                 "status": {"ready": False},
+            },
+            "opus_tigrinya": {
+                "languages": ["ti"],
+                "status": {"ready": True},
             },
         }
 
@@ -162,6 +159,29 @@ class TranslationProviderRoutingTests(unittest.TestCase):
         translator = ResourceStubTranslator()
 
         self.assertIn("es", translator.supported_languages_for_provider("ct2small100"))
+
+    def test_tigrinya_uses_the_licensed_bundle_model_in_any_local_mode(self):
+        translator = LocalTranslator("en")
+        with patch.object(
+            translator,
+            "_translate_with_opus_tigrinya",
+            return_value=TranslationResult("እንቋዕ ደሓን መጻእኩም", True),
+        ) as translate_tigrinya:
+            result = translator.translate("Welcome", "ti", enabled=True, provider="both")
+
+        self.assertIn("ti", LANGUAGE_BY_CODE)
+        self.assertEqual(LANGUAGE_BY_CODE["ti"]["native"], "ትግርኛ")
+        self.assertEqual(LANGUAGE_BY_CODE["ti"]["flag"], "🇪🇷")
+        self.assertTrue(result.applied)
+        self.assertEqual(result.actual_provider, "opus_tigrinya")
+        self.assertEqual(result.fallback_chain, ("opus_tigrinya",))
+        translate_tigrinya.assert_called_once_with("Welcome")
+
+    def test_installed_tigrinya_bundle_component_is_exposed_with_existing_modes(self):
+        translator = ResourceStubTranslator()
+
+        self.assertIn("ti", translator.supported_languages_for_provider("argos"))
+        self.assertIn("ti", translator.supported_languages_for_provider("ct2small100"))
 
     def test_ct2small100_sets_target_language_before_tokenizing(self):
         translator = CT2RuntimeStubTranslator()

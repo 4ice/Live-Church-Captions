@@ -14,6 +14,10 @@
   const languageList = document.getElementById('languageList');
   const translationNotice = document.getElementById('translationNotice');
   const captionLoadNotice = document.getElementById('captionLoadNotice');
+  const translationAudioToggle = document.getElementById('translationAudioToggle');
+  const translationAudioLabel = document.getElementById('translationAudioLabel');
+  const translationAudioStatus = document.getElementById('translationAudioStatus');
+  const translationAudioPlayer = document.getElementById('translationAudioPlayer');
   const viewerHint = document.getElementById('viewerHint');
   const viewerNotices = Array.from(document.querySelectorAll('[data-viewer-notice]'));
   const isPhonePage = document.body.classList.contains('phone-page');
@@ -45,6 +49,17 @@
   let languageMetadataRequest = null;
   let screenWakeLock = null;
   let wakeLockRequested = false;
+  let translationAudioEnabled = false;
+  let translationAudioSocket = null;
+  let translationAudioReconnectTimer = null;
+  let translationAudioPingTimer = null;
+  let translationAudioCurrentUrl = null;
+  let translationAudioSilenceUrl = null;
+  let translationAudioPlayerMode = 'idle';
+  let translationAudioTransitioning = false;
+  let translationAudioNativePaused = false;
+  let translationAudioQueuedSeconds = 0;
+  const translationAudioQueue = [];
 
   let paused = false;
   let fontScale = Number(localStorage.getItem('captionFontScale') || '1');
@@ -89,7 +104,9 @@
   let historyLogEnabled = true;
   let socket = null;
   let reconnectTimer = null;
+  let captionPingTimer = null;
   let manualReconnect = false;
+  let pageSuspended = false;
   let captionLoadNoticeTimer = null;
   let captionLoadNoticeShownAt = 0;
   let translationNoticeDismissed = false;
@@ -134,6 +151,316 @@
     const english = UI_STRINGS[SOURCE_LANGUAGE] && UI_STRINGS[SOURCE_LANGUAGE][key];
     return fallback || english || key;
   }
+
+  function translatedAudioAvailable() {
+    const audioState = translationState?.translated_audio || {};
+    return viewerLanguage !== SOURCE_LANGUAGE &&
+      audioState.enabled === true &&
+      Array.isArray(audioState.available_languages) &&
+      audioState.available_languages.includes(viewerLanguage);
+  }
+
+  function translatedAudioLanguageCodes() {
+    const audioState = translationState?.translated_audio || {};
+    if (audioState.enabled !== true || !Array.isArray(audioState.available_languages)) return new Set();
+    return new Set(audioState.available_languages.map((code) => String(code).toLowerCase()));
+  }
+
+  function setTranslationAudioStatus(key = '', {visible = true} = {}) {
+    if (!translationAudioStatus) return;
+    translationAudioStatus.hidden = !visible || !key;
+    translationAudioStatus.dataset.i18n = key || '';
+    translationAudioStatus.textContent = key ? t(key) : '';
+  }
+
+  function updateTranslationAudioControl() {
+    if (!translationAudioToggle) return;
+    const operatorEnabled = translationState?.translated_audio?.operator_enabled !== false;
+    const available = translatedAudioAvailable();
+    // Keep translated audio discoverable on every translated-language page.
+    // If a reviewed local voice is not installed, selecting the control gives
+    // the listener a clear explanation instead of silently hiding the feature.
+    translationAudioToggle.hidden = viewerLanguage === SOURCE_LANGUAGE || !operatorEnabled;
+    translationAudioToggle.classList.toggle('unavailable', !available);
+    translationAudioToggle.title = available ? '' : t('audio_unavailable');
+    translationAudioToggle.setAttribute('aria-pressed', translationAudioEnabled ? 'true' : 'false');
+    const key = translationAudioEnabled ? 'stop_translation_audio' : 'listen_translation';
+    if (translationAudioLabel) translationAudioLabel.textContent = t(key);
+    translationAudioToggle.setAttribute(
+      'aria-label',
+      available ? t(key) : `${t(key)} — ${t('audio_unavailable')}`,
+    );
+    if (!operatorEnabled) {
+      if (translationAudioEnabled) stopTranslationAudio({silent: true});
+      setTranslationAudioStatus('', {visible: false});
+    } else if (!available && translationAudioEnabled) {
+      stopTranslationAudio({silent: true});
+      setTranslationAudioStatus('audio_unavailable');
+    }
+  }
+
+  function revokeTranslationAudioUrl(url) {
+    if (!url || !String(url).startsWith('blob:')) return;
+    try { URL.revokeObjectURL(url); } catch (_) {}
+  }
+
+  function clearTranslationAudioQueue() {
+    while (translationAudioQueue.length) {
+      const item = translationAudioQueue.shift();
+      revokeTranslationAudioUrl(item?.url);
+    }
+    translationAudioQueuedSeconds = 0;
+  }
+
+  function createTranslationAudioSilenceUrl() {
+    if (translationAudioSilenceUrl) return translationAudioSilenceUrl;
+    const sampleRate = 8000;
+    const sampleCount = sampleRate;
+    const buffer = new ArrayBuffer(44 + sampleCount * 2);
+    const view = new DataView(buffer);
+    const write = (offset, value) => {
+      for (let index = 0; index < value.length; index += 1) view.setUint8(offset + index, value.charCodeAt(index));
+    };
+    write(0, 'RIFF');
+    view.setUint32(4, 36 + sampleCount * 2, true);
+    write(8, 'WAVE');
+    write(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, 'data');
+    view.setUint32(40, sampleCount * 2, true);
+    translationAudioSilenceUrl = URL.createObjectURL(new Blob([buffer], {type: 'audio/wav'}));
+    return translationAudioSilenceUrl;
+  }
+
+  function updateTranslationMediaSession(active) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      if (active && 'MediaMetadata' in window) {
+        const language = LANGUAGES.find((item) => item.code === viewerLanguage);
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: 'Live translated captions',
+          artist: language?.native || language?.name || viewerLanguage,
+          album: 'Church Cap',
+        });
+      } else {
+        navigator.mediaSession.metadata = null;
+      }
+      navigator.mediaSession.playbackState = active ? 'playing' : 'none';
+    } catch (_) {}
+  }
+
+  function configureTranslationMediaActions() {
+    if (!('mediaSession' in navigator) || !translationAudioPlayer) return;
+    const handlers = {
+      play: () => {
+        translationAudioNativePaused = false;
+        if (translationAudioQueue.length && translationAudioPlayerMode !== 'cue') playNextTranslatedAudio();
+        else translationAudioPlayer.play().catch(() => setTranslationAudioStatus('audio_error'));
+      },
+      pause: () => {
+        translationAudioNativePaused = true;
+        translationAudioPlayer.pause();
+      },
+      stop: () => stopTranslationAudio(),
+    };
+    Object.entries(handlers).forEach(([action, handler]) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
+    });
+  }
+
+  function releaseTranslationAudioPlayer() {
+    clearTranslationAudioQueue();
+    if (translationAudioPlayer) {
+      try { translationAudioPlayer.pause(); } catch (_) {}
+      translationAudioPlayer.loop = false;
+      translationAudioPlayer.removeAttribute('src');
+      try { translationAudioPlayer.load(); } catch (_) {}
+    }
+    revokeTranslationAudioUrl(translationAudioCurrentUrl);
+    translationAudioCurrentUrl = null;
+    revokeTranslationAudioUrl(translationAudioSilenceUrl);
+    translationAudioSilenceUrl = null;
+    translationAudioPlayerMode = 'idle';
+    translationAudioTransitioning = false;
+    translationAudioNativePaused = false;
+    updateTranslationMediaSession(false);
+  }
+
+  function failTranslationAudioPlayback() {
+    translationAudioEnabled = false;
+    closeTranslationAudioSocket();
+    releaseTranslationAudioPlayer();
+    setTranslationAudioStatus('audio_error');
+    updateTranslationAudioControl();
+  }
+
+  async function playNextTranslatedAudio() {
+    if (!translationAudioEnabled || !translationAudioPlayer || translationAudioTransitioning || translationAudioNativePaused) return false;
+    translationAudioTransitioning = true;
+    let started = false;
+    let previousUrl = translationAudioCurrentUrl;
+    try {
+      translationAudioCurrentUrl = null;
+      const item = translationAudioQueue.shift();
+      if (item) {
+        translationAudioQueuedSeconds = Math.max(0, translationAudioQueuedSeconds - item.duration);
+        translationAudioCurrentUrl = item.url;
+        translationAudioPlayerMode = 'cue';
+        translationAudioPlayer.loop = false;
+        translationAudioPlayer.src = item.url;
+        setTranslationAudioStatus('audio_playing');
+      } else {
+        translationAudioPlayerMode = 'waiting';
+        translationAudioPlayer.loop = true;
+        translationAudioPlayer.src = createTranslationAudioSilenceUrl();
+        setTranslationAudioStatus('audio_waiting');
+      }
+      // Detach the previous Blob from the media element before revoking it.
+      // Safari can otherwise retain a stale media resource across page-cache
+      // suspension and fail later requests to the same local origin.
+      revokeTranslationAudioUrl(previousUrl);
+      previousUrl = null;
+      await translationAudioPlayer.play();
+      updateTranslationMediaSession(true);
+      started = true;
+    } catch (_) {
+      revokeTranslationAudioUrl(previousUrl);
+      failTranslationAudioPlayback();
+    } finally {
+      translationAudioTransitioning = false;
+      if (translationAudioEnabled && !translationAudioNativePaused && translationAudioQueue.length && translationAudioPlayerMode !== 'cue') {
+        playNextTranslatedAudio();
+      }
+    }
+    return started;
+  }
+
+  function closeTranslationAudioSocket() {
+    if (translationAudioReconnectTimer) clearTimeout(translationAudioReconnectTimer);
+    translationAudioReconnectTimer = null;
+    if (translationAudioPingTimer) clearInterval(translationAudioPingTimer);
+    translationAudioPingTimer = null;
+    const active = translationAudioSocket;
+    translationAudioSocket = null;
+    if (active) {
+      try { active.close(); } catch (_) {}
+    }
+  }
+
+  async function stopTranslationAudio({silent = false} = {}) {
+    translationAudioEnabled = false;
+    closeTranslationAudioSocket();
+    releaseTranslationAudioPlayer();
+    if (!silent) setTranslationAudioStatus('', {visible: false});
+    updateTranslationAudioControl();
+  }
+
+  function playTranslatedAudio(encoded, durationSeconds = 0) {
+    if (!translationAudioEnabled || !encoded || !translationAudioPlayer) return;
+    try {
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      if (bytes.length < 44 || binary.slice(0, 4) !== 'RIFF') throw new Error('Invalid WAV payload');
+      const duration = Math.max(0, Number(durationSeconds) || 0);
+      // Prefer the newest completed cue if network or synthesis delay has
+      // accumulated more than a short readable backlog.
+      if (translationAudioQueuedSeconds + duration > 4.5) clearTranslationAudioQueue();
+      const url = URL.createObjectURL(new Blob([bytes], {type: 'audio/wav'}));
+      translationAudioQueue.push({url, duration});
+      translationAudioQueuedSeconds += duration;
+      if (translationAudioPlayerMode !== 'cue') playNextTranslatedAudio();
+    } catch (_) {
+      failTranslationAudioPlayback();
+    }
+  }
+
+  function connectTranslationAudio() {
+    if (!translationAudioEnabled || !translatedAudioAvailable()) return;
+    closeTranslationAudioSocket();
+    setTranslationAudioStatus('audio_connecting');
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const websocket = new WebSocket(`${protocol}://${location.host}/ws/translation-audio?lang=${encodeURIComponent(viewerLanguage)}`);
+    translationAudioSocket = websocket;
+    websocket.onopen = () => {
+      if (websocket !== translationAudioSocket) return;
+      try { websocket.send('listen'); } catch (_) {}
+      translationAudioPingTimer = setInterval(() => {
+        try { websocket.send('ping'); } catch (_) {}
+      }, 15000);
+    };
+    websocket.onmessage = (event) => {
+      if (websocket !== translationAudioSocket || !translationAudioEnabled) return;
+      let payload;
+      try { payload = JSON.parse(event.data); } catch (_) { return; }
+      if (payload.type === 'translation_audio' && payload.language === viewerLanguage) {
+        playTranslatedAudio(payload.audio_base64, payload.duration_seconds);
+      } else if (payload.type === 'audio_status') {
+        const key = payload.message_key || (payload.status === 'listening' ? 'audio_waiting' : 'audio_error');
+        setTranslationAudioStatus(key);
+        if (payload.status === 'unavailable') stopTranslationAudio({silent: true});
+      }
+    };
+    websocket.onclose = () => {
+      if (websocket !== translationAudioSocket) return;
+      translationAudioSocket = null;
+      if (translationAudioPingTimer) clearInterval(translationAudioPingTimer);
+      translationAudioPingTimer = null;
+      if (translationAudioEnabled && translatedAudioAvailable()) {
+        setTranslationAudioStatus('audio_connecting');
+        translationAudioReconnectTimer = setTimeout(connectTranslationAudio, 2000);
+      }
+    };
+    websocket.onerror = () => setTranslationAudioStatus('audio_error');
+  }
+
+  async function startTranslationAudio() {
+    if (!translationAudioPlayer || !window.Blob || !window.URL) {
+      setTranslationAudioStatus('audio_unavailable');
+      return;
+    }
+    translationAudioEnabled = true;
+    translationAudioNativePaused = false;
+    configureTranslationMediaActions();
+    try {
+      // This first play occurs directly inside the listener's tap. Keeping one
+      // media element active with a silent waiting track preserves Safari's
+      // playback permission and exposes the native media session before the
+      // first completed translated cue arrives.
+      const mediaStarted = await playNextTranslatedAudio();
+      if (!mediaStarted) throw new Error('The browser blocked media playback.');
+    } catch (_) {
+      failTranslationAudioPlayback();
+      return;
+    }
+    if (!translatedAudioAvailable()) {
+      setTranslationAudioStatus('audio_connecting');
+      await refreshLanguageMetadata({reconnectIfNeeded: false});
+    }
+    if (!translatedAudioAvailable()) {
+      translationAudioEnabled = false;
+      releaseTranslationAudioPlayer();
+      setTranslationAudioStatus('audio_unavailable');
+      updateTranslationAudioControl();
+      return;
+    }
+    updateTranslationAudioControl();
+    connectTranslationAudio();
+  }
+
+  translationAudioPlayer?.addEventListener('ended', () => {
+    if (translationAudioEnabled && translationAudioPlayerMode === 'cue') playNextTranslatedAudio();
+  });
+
+  translationAudioPlayer?.addEventListener('error', () => {
+    if (translationAudioEnabled) setTranslationAudioStatus('audio_error');
+  });
 
   async function showSystemMessageFromKey(key, fallback = '') {
     systemMessageKey = key;
@@ -194,11 +521,8 @@
     document.documentElement.dir = lang.dir || 'ltr';
     if (languageSelect) languageSelect.value = viewerLanguage;
     if (languageFlag) {
-      languageFlag.textContent = marker.text;
-      languageFlag.dataset.code = marker.code;
+      renderLanguageMarker(languageFlag, marker);
       languageFlag.title = `${languageDisplayName(lang)} · ${marker.code}`;
-      languageFlag.classList.toggle('language-code-badge', marker.isBadge);
-      languageFlag.classList.toggle('language-flag-chip', marker.isFlag);
     }
     if (languagePickerLabel) languagePickerLabel.textContent = languageDisplayName(lang);
     document.querySelectorAll('[data-i18n]').forEach((el) => {
@@ -229,6 +553,7 @@
     applyViewerTheme();
     applyComfortMode();
     updateTranscriptToggleButton();
+    updateTranslationAudioControl();
     renderLanguageList(languageSearch?.value || '');
     renderSubtitleStack();
     renderHistoryRoll();
@@ -267,6 +592,9 @@
     }
     if ((provider === 'small100' || provider === 'both') && resources.small100?.status?.ready) {
       (resources.small100?.languages || []).forEach(code => codes.add(code));
+    }
+    if (resources.opus_tigrinya?.status?.ready) {
+      codes.add('ti');
     }
     return codes;
   }
@@ -319,9 +647,40 @@
 
   function languageMarker(lang) {
     const code = String(lang?.code || 'cc').slice(0, 3).toUpperCase();
-    const flag = String(lang?.flag || '').trim();
-    if (flag && flag !== '🌐') return {text: flag, code, isBadge: false, isFlag: true};
+    const flagCode = languageFlagCountryCode(lang);
+    if (flagCode) return {text: '', code, flagCode, isBadge: false, isFlag: true};
     return {text: code, code, isBadge: true, isFlag: false};
+  }
+
+  function languageFlagCountryCode(lang) {
+    const provided = String(lang?.flag_code || '').trim().toLowerCase();
+    if (/^[a-z]{2}$/.test(provided)) return provided;
+    const points = [...String(lang?.flag || '').trim()].map(character => character.codePointAt(0));
+    const regionalA = 0x1F1E6;
+    if (points.length !== 2 || points.some(point => point < regionalA || point > 0x1F1FF)) return '';
+    return points.map(point => String.fromCharCode(97 + point - regionalA)).join('');
+  }
+
+  function renderLanguageMarker(element, marker) {
+    element.replaceChildren();
+    element.dataset.code = marker.code;
+    element.classList.toggle('language-code-badge', marker.isBadge);
+    element.classList.toggle('language-flag-chip', marker.isFlag);
+    if (!marker.isFlag) {
+      element.textContent = marker.text;
+      return;
+    }
+    const image = document.createElement('img');
+    image.src = `/static/flags/4x3/${marker.flagCode}.svg`;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.addEventListener('error', () => {
+      element.replaceChildren(marker.code);
+      element.classList.remove('language-flag-chip');
+      element.classList.add('language-code-badge');
+    }, {once: true});
+    element.appendChild(image);
   }
 
   async function ensureLanguageUiStrings(code, {showLoading = true} = {}) {
@@ -1261,32 +1620,50 @@
   }
 
   function connect() {
+    if (pageSuspended) return;
     manualReconnect = true;
-    if (socket) {
-      try { socket.close(); } catch (_) {}
-    }
+    const previousSocket = socket;
+    socket = null;
+    if (captionPingTimer) clearInterval(captionPingTimer);
+    captionPingTimer = null;
+    if (previousSocket) try { previousSocket.close(); } catch (_) {}
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${protocol}://${location.host}/ws/captions?lang=${encodeURIComponent(viewerLanguage)}`);
     socket = ws;
-    let pingTimer = null;
+    // The intentionally closed socket is now distinguishable by identity.
+    // Let this new attempt reconnect even if it fails before reaching onopen.
+    manualReconnect = false;
 
     ws.onopen = () => {
+      if (ws !== socket || pageSuspended) {
+        try { ws.close(); } catch (_) {}
+        return;
+      }
       manualReconnect = false;
       setConnection('live', true);
       ws.send('hello');
-      pingTimer = setInterval(() => {
+      captionPingTimer = setInterval(() => {
+        if (ws !== socket || ws.readyState !== WebSocket.OPEN) return;
         try { ws.send('ping'); } catch (_) {}
       }, 15000);
     };
 
     ws.onmessage = (event) => {
+      if (ws !== socket || pageSuspended) return;
       let payload;
       try { payload = JSON.parse(event.data); } catch (_) { return; }
 
       if (payload.type === 'state') renderState(payload.data);
       if (payload.type === 'viewer_meta') {
-        translationState = payload.data || translationState;
+        const previousAudioState = translationState?.translated_audio;
+        translationState = {
+          ...translationState,
+          ...(payload.data || {}),
+          translated_audio: payload.data?.translated_audio || previousAudioState,
+        };
+        updateTranslationAudioControl();
         if (ensureViewerLanguageIsAvailable()) {
           applyLanguage();
           connect();
@@ -1370,13 +1747,46 @@
 
     ws.onclose = () => {
       if (ws !== socket) return;
-      if (pingTimer) clearInterval(pingTimer);
-      if (manualReconnect) return;
+      socket = null;
+      if (captionPingTimer) clearInterval(captionPingTimer);
+      captionPingTimer = null;
+      if (manualReconnect || pageSuspended) return;
       setConnection('reconnecting', false);
       reconnectTimer = setTimeout(connect, 2000);
     };
 
-    ws.onerror = () => setConnection('connection_issue', false);
+    ws.onerror = () => {
+      if (ws === socket && !pageSuspended) setConnection('connection_issue', false);
+    };
+  }
+
+  function suspendViewerConnections() {
+    pageSuspended = true;
+    manualReconnect = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (captionPingTimer) clearInterval(captionPingTimer);
+    captionPingTimer = null;
+    const activeSocket = socket;
+    socket = null;
+    if (activeSocket) try { activeSocket.close(); } catch (_) {}
+    stopTranslationAudio({silent: true});
+    if (languageMetadataRefreshTimer) clearInterval(languageMetadataRefreshTimer);
+    languageMetadataRefreshTimer = null;
+    if (screenWakeLock) {
+      try { screenWakeLock.release()?.catch?.(() => {}); } catch (_) {}
+      screenWakeLock = null;
+    }
+  }
+
+  function resumeViewerConnections(event) {
+    const shouldResume = pageSuspended || event?.persisted === true;
+    pageSuspended = false;
+    if (!shouldResume) return;
+    setConnection('connecting', false);
+    connect();
+    refreshLanguageMetadata({reconnectIfNeeded: false});
+    refreshScreenWakeLock();
   }
 
   languageSelect?.addEventListener('change', () => {
@@ -1384,6 +1794,7 @@
   });
 
   function changeViewerLanguage(code) {
+    stopTranslationAudio({silent: true});
     showCaptionLoadNotice('connecting');
     viewerLanguage = code || SOURCE_LANGUAGE;
     ensureLanguageUiStrings(viewerLanguage);
@@ -1466,6 +1877,7 @@
     const available = availableCaptionLanguageCodes();
     const requestable = requestableCaptionLanguageCodes();
     const pending = pendingLanguageRequestCodes();
+    const audioLanguages = translatedAudioLanguageCodes();
     const matches = filteredLanguagesForCurrentMode().filter(lang => !q || languageSearchText(lang).includes(q));
     languageList.textContent = '';
     if (unavailable) {
@@ -1490,6 +1902,7 @@
     matches.forEach((lang) => {
       const isAvailable = available.has(lang.code);
       const isRequestable = requestable.has(lang.code) && !isAvailable;
+      const hasTranslatedAudio = lang.code !== SOURCE_LANGUAGE && audioLanguages.has(lang.code);
       const item = document.createElement(isAvailable ? 'button' : 'div');
       if (isAvailable) item.type = 'button';
       item.className = `language-option${lang.code === viewerLanguage ? ' selected' : ''}${isRequestable ? ' requestable-language-option' : ''}`;
@@ -1499,11 +1912,8 @@
       const marker = languageMarker(lang);
       const flag = document.createElement('span');
       flag.className = 'language-option-flag';
-      flag.dataset.code = marker.code;
       flag.title = `${languageDisplayName(lang)} · ${marker.code}`;
-      flag.classList.toggle('language-code-badge', marker.isBadge);
-      flag.classList.toggle('language-flag-chip', marker.isFlag);
-      flag.textContent = marker.text;
+      renderLanguageMarker(flag, marker);
       const text = document.createElement('span');
       text.className = 'language-option-text';
       const title = document.createElement('strong');
@@ -1516,6 +1926,15 @@
         : (lang.native && lang.native !== lang.name ? `${lang.native} · ${lang.code}` : lang.code);
       text.append(title, meta);
       item.append(flag, text);
+      if (hasTranslatedAudio) {
+        const audioBadge = document.createElement('span');
+        audioBadge.className = 'language-audio-badge';
+        audioBadge.setAttribute('role', 'img');
+        audioBadge.setAttribute('aria-label', t('listen_translation'));
+        audioBadge.title = t('listen_translation');
+        audioBadge.textContent = '🎧';
+        item.appendChild(audioBadge);
+      }
       if (isAvailable) {
         item.addEventListener('click', () => {
           changeViewerLanguage(lang.code);
@@ -1548,6 +1967,21 @@
     }
   });
   document.addEventListener('visibilitychange', refreshScreenWakeLock);
+  window.addEventListener('pagehide', suspendViewerConnections);
+  window.addEventListener('pageshow', resumeViewerConnections);
+  window.addEventListener('online', () => {
+    if (pageSuspended) return;
+    connect();
+    if (translationAudioEnabled && translatedAudioAvailable()) connectTranslationAudio();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || pageSuspended) return;
+    // Safari may restore a page with an apparently-open socket whose network
+    // connection was discarded while the device slept. A fresh connection is
+    // cheaper and more reliable than waiting for its next timeout.
+    connect();
+    if (translationAudioEnabled && translatedAudioAvailable()) connectTranslationAudio();
+  });
   if (isPhonePage) {
     requestScreenWakeLock();
     document.addEventListener('pointerdown', requestScreenWakeLock, {once: true});
@@ -1580,6 +2014,11 @@
   document.getElementById('toggleTranscript')?.addEventListener('click', () => {
     transcriptVisible = !transcriptVisible;
     applyTranscriptVisibility();
+  });
+
+  translationAudioToggle?.addEventListener('click', () => {
+    if (translationAudioEnabled) stopTranslationAudio();
+    else startTranslationAudio();
   });
 
   document.getElementById('pauseScroll')?.addEventListener('click', (e) => {

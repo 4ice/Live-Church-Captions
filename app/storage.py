@@ -6,10 +6,13 @@ candidates.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
 from typing import Any, Iterable
+
+from app.tts_catalog import VOICE_PACKAGES
 
 
 MAX_LOG_BYTES = 5 * 1024 * 1024
@@ -85,6 +88,61 @@ def _category(identifier: str, label: str, path: Path, description: str) -> dict
         "label": label,
         "bytes": _path_size(path),
         "description": description,
+    }
+
+
+def _spoken_audio_models_snapshot(app_support: Path) -> dict[str, Any]:
+    """Report reviewed installed voice-model sizes without exposing paths."""
+    root = Path(app_support) / "tts"
+    manifest = root / "voices.json"
+    empty = {"total_bytes": 0, "installed_package_count": 0, "packages": []}
+    if manifest.is_symlink() or not manifest.is_file():
+        return empty
+    try:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {**empty, "error": "The installed voice manifest could not be read safely."}
+    if int(payload.get("schema_version", 0)) != 1 or not isinstance(payload.get("voices"), list):
+        return {**empty, "error": "The installed voice manifest is not supported."}
+
+    manifest_keys = {
+        (str(entry.get("language") or ""), str(entry.get("source_url") or ""))
+        for entry in payload["voices"]
+        if isinstance(entry, dict)
+    }
+    voices_root_path = root / "voices"
+    if voices_root_path.is_symlink():
+        return {**empty, "error": "The installed voice-model folder did not pass the storage safety check."}
+    voices_root = voices_root_path.resolve()
+    packages: list[dict[str, Any]] = []
+    for package_id, package in VOICE_PACKAGES.items():
+        expected = {
+            (str(entry["language"]), str(entry["source_url"]))
+            for entry in package["entries"]
+        }
+        if not expected or not expected.issubset(manifest_keys):
+            continue
+        folder_path = voices_root / str(package["folder"])
+        if folder_path.is_symlink():
+            continue
+        try:
+            folder = folder_path.resolve()
+            folder.relative_to(voices_root)
+        except (OSError, ValueError):
+            continue
+        if not folder.is_dir():
+            continue
+        packages.append({
+            "id": package_id,
+            "label": str(package["label"]),
+            "caption_languages": list(package["caption_languages"]),
+            "license_id": str(package["license_id"]),
+            "bytes": _path_size(folder),
+        })
+    return {
+        "total_bytes": sum(int(package["bytes"]) for package in packages),
+        "installed_package_count": len(packages),
+        "packages": packages,
     }
 
 
@@ -200,7 +258,7 @@ def storage_snapshot(
     logs_bytes = _path_size(project_root / "logs") + _path_size(app_support / "logs")
     categories = [
         _category("application", "Application and environment", project_root, "Church Cap code, local environment, and converted models."),
-        _category("application-data", "Church Cap data", app_support, "Settings, retained measurements, transcripts, and support logs."),
+        _category("application-data", "Church Cap data", app_support, "Settings, retained measurements, transcripts, optional spoken-audio models, and support logs."),
         _category("huggingface-cache", "Hugging Face model downloads", hub_cache, "Downloaded Faster Whisper and SMaLL-100 source files."),
         _category("whisper-cache", "OpenAI Whisper model downloads", whisper_cache, "Downloaded models used by the compatibility transcription backend."),
     ]
@@ -215,6 +273,7 @@ def storage_snapshot(
         "total_bytes": total_bytes,
         "logs_bytes": logs_bytes,
         "categories": categories,
+        "spoken_audio": _spoken_audio_models_snapshot(app_support),
         "cleanup_candidates": public_candidates,
         "recommended_reclaimable_bytes": sum(int(item["bytes"]) for item in candidates if item.get("recommended")),
         "log_policy": {"maximum_bytes_per_log": MAX_LOG_BYTES, "backup_count": LOG_BACKUPS},

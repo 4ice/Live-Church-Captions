@@ -3,6 +3,7 @@ import logging
 import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 from fastapi import WebSocket
 from app.models import CaptionSegment, CaptionState
 from app.i18n import LocalTranslator, MAX_TRANSLATION_LANGUAGES, SOURCE_LANGUAGE, normalise_language
@@ -27,6 +28,9 @@ from app.metrics import (
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from app.tts import TranslationSpeechManager
+
 
 class CaptionHub:
     def __init__(
@@ -36,6 +40,7 @@ class CaptionHub:
         transcript_saving_enabled: bool = True,
         transcript_store: TranscriptStore | None = None,
         translation_queue_capacity_per_language: int = 8,
+        translation_speech_manager: "TranslationSpeechManager | None" = None,
     ):
         self._clients: dict[WebSocket, str] = {}
         self._viewer_clients: set[WebSocket] = set()
@@ -72,6 +77,7 @@ class CaptionHub:
         self._translation_worker_task: asyncio.Task | None = None
         self._translation_idle_event: asyncio.Event | None = None
         self._translation_in_flight: TranslationJob | None = None
+        self.translation_speech_manager = translation_speech_manager
         self._transcript_store = transcript_store or TranscriptStore()
         self._session_cache_written = False
         self._start_new_session()
@@ -179,7 +185,7 @@ class CaptionHub:
             resources = self.translator.translation_resources()
         except Exception as exc:
             resources = {"error": str(exc)}
-        return {
+        state = {
             "enabled": self.translation_enabled,
             "provider": self.translation_provider,
             "provider_status": provider_status,
@@ -197,6 +203,9 @@ class CaptionHub:
             "available_languages": available_languages,
             "requestable_languages": requestable_languages,
         }
+        if self.translation_speech_manager is not None:
+            state["translated_audio"] = self.translation_speech_manager.public_state()
+        return state
 
     def configure_retention(self, retention_minutes: int, transcript_saving_enabled: bool) -> None:
         self._retention_minutes = max(0, int(retention_minutes))
@@ -383,6 +392,8 @@ class CaptionHub:
 
     async def set_sensitive_mode(self, enabled: bool) -> None:
         enabled = bool(enabled)
+        if self.translation_speech_manager is not None:
+            self.translation_speech_manager.set_sensitive_mode(enabled)
         if enabled:
             self._sensitive_mode = True
             self._sensitive_resume_ignore_until = None
@@ -1043,6 +1054,14 @@ class CaptionHub:
             cue_first_publish_seconds=first_cue_publish_seconds,
             is_final=segment.is_final,
         )
+        if segment.is_final and applied and self.translation_speech_manager is not None:
+            # TTS has its own bounded worker. Enqueueing here never waits for
+            # synthesis and therefore does not add caption/translation latency.
+            self.translation_speech_manager.queue_translation(
+                language=language,
+                cue_id=cue_id,
+                text=display_segment.text,
+            )
         if segment.is_final:
             self._translation_published_cues.discard(published_key)
 
@@ -1137,6 +1156,10 @@ class CaptionHub:
 
     async def _broadcast_viewer_meta(self) -> None:
         await self._broadcast({"type": "viewer_meta", "data": self.translation_state(), "viewers": self.viewer_count})
+
+    async def broadcast_viewer_meta(self) -> None:
+        """Publish safe viewer-facing availability after an operator change."""
+        await self._broadcast_viewer_meta()
 
     async def _broadcast(self, payload: dict) -> None:
         async with self._lock:

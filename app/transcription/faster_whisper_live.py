@@ -29,6 +29,7 @@ from app.metrics import (
 )
 from app.text_cleanup import clean_caption_text, collapse_repeated_phrase
 from app.transcription.base import Transcriber
+from app.transcription.audio_watchdog import AudioStreamWatchdog
 from app.transcription.audio_input import audio_input_health, input_default_sample_rate, resample_mono
 from app.hardware import detect_hardware_acceleration, resolve_whisper_runtime
 from app.transcription.streaming_words import (
@@ -40,7 +41,7 @@ from app.transcription.streaming_words import (
 )
 
 
-class FasterWhisperTranscriber(Transcriber):
+class FasterWhisperTranscriber(AudioStreamWatchdog, Transcriber):
     def __init__(
         self,
         model_name: str = "base.en",
@@ -60,6 +61,7 @@ class FasterWhisperTranscriber(Transcriber):
         edge_guard_seconds: float = 0.32,
         edge_confidence_threshold: float = 0.65,
         committed_audio_overlap_seconds: float = 1.0,
+        hotwords: str | None = None,
     ):
         self.model_name = model_name
         self.requested_device = device
@@ -77,6 +79,7 @@ class FasterWhisperTranscriber(Transcriber):
         self.min_rms = max(float(stream_min_rms), 0.0)
         self.stability_passes = max(int(stream_stability_passes), 1)
         self.initial_prompt = " ".join(str(initial_prompt or "").split()).strip() or None
+        self.hotwords = ", ".join(str(hotwords or "").split()).strip() or None
         self.word_timestamps_enabled = bool(word_timestamps_enabled)
         self.edge_guard_seconds = max(0.0, float(edge_guard_seconds))
         self.edge_confidence_threshold = min(1.0, max(0.0, float(edge_confidence_threshold)))
@@ -106,6 +109,7 @@ class FasterWhisperTranscriber(Transcriber):
         self._stream: sd.InputStream | None = None
         self._stable_candidate = ""
         self._stable_count = 0
+        self._initialise_audio_watchdog()
         update_metrics(model_name=self.model_name, model_device=self.device, model_compute_type=self.compute_type, audio_device=self.audio_device, sample_rate=self.sample_rate)
 
     def _load_model(self) -> WhisperModel:
@@ -134,6 +138,7 @@ class FasterWhisperTranscriber(Transcriber):
         rms = float(np.sqrt(np.mean(np.square(audio)))) if audio.size else 0.0
         peak = float(np.max(np.abs(audio))) if audio.size else 0.0
         now = time.monotonic()
+        self._mark_audio_callback(now)
         self._audio_nonzero_seen, input_warning = audio_input_health(
             audio,
             stream_started_at=self._audio_stream_started_at,
@@ -164,7 +169,7 @@ class FasterWhisperTranscriber(Transcriber):
     def _start_audio_stream(self) -> None:
         def open_stream(device, samplerate: int):
             self.input_sample_rate = int(samplerate)
-            self._audio_stream_started_at = time.monotonic()
+            self._mark_audio_stream_started()
             self._audio_nonzero_seen = False
             stream = sd.InputStream(
                 samplerate=self.input_sample_rate,
@@ -312,6 +317,7 @@ class FasterWhisperTranscriber(Transcriber):
             log_prob_threshold=-1.0,
             no_speech_threshold=0.55,
             initial_prompt=self.initial_prompt,
+            hotwords=getattr(self, "hotwords", None),
             condition_on_previous_text=False,
             without_timestamps=False,
             word_timestamps=self.word_timestamps_enabled,
@@ -467,6 +473,17 @@ class FasterWhisperTranscriber(Transcriber):
                 now=time.monotonic(),
                 interval_seconds=self.update_interval,
             ))
+            recovery_state = await loop.run_in_executor(
+                self._executor,
+                self._recover_audio_stream_if_stalled,
+            )
+            if recovery_state is not None:
+                pending_final_text = ""
+                pending_final_spans = []
+                pending_capture_started = None
+                last_publish = 0.0
+                next_pass_due = time.monotonic() + self.update_interval
+                continue
             now = time.monotonic()
             if previous_pass_started is not None:
                 record_transcription_pass_interval(now - previous_pass_started)

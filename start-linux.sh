@@ -16,6 +16,13 @@ if [[ ! -x "$VENV_PY" ]]; then
   exit 1
 fi
 
+# Project-local NVIDIA wheels store their shared libraries outside the
+# loader's default search path. Export their directories before Python starts
+# so CTranslate2 can load CUDA 12 cuBLAS and cuDNN 9 during transcription.
+# shellcheck source=scripts/linux-cuda-runtime.sh
+source "$APP_DIR/scripts/linux-cuda-runtime.sh"
+prepare_linux_python_cuda_library_path "$VENV_PY"
+
 if [[ ! -f ".env" ]]; then
   if [[ -f ".env.example" ]]; then
     cp .env.example .env

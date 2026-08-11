@@ -47,7 +47,15 @@
     "no_languages_found",
     "caption_languages_unavailable",
     "sensitive_paused_message",
-    "sensitive_resumed_message"
+    "sensitive_resumed_message",
+    "listen_translation",
+    "stop_translation_audio",
+    "audio_connecting",
+    "audio_listening",
+    "audio_waiting",
+    "audio_playing",
+    "audio_unavailable",
+    "audio_error"
   ],
   "locales": {
     "af": {
@@ -475,7 +483,15 @@
       "no_languages_found": "No s'han trobat idiomes.",
       "caption_languages_unavailable": "Els subtítols traduïts no estan disponibles per a aquest servei. Els subtítols originals en anglès estan disponibles.",
       "sensitive_paused_message": "Els subtítols estan en pausa per a un moment privat o sensible.",
-      "sensitive_resumed_message": "Els subtítols s'han reprès."
+      "sensitive_resumed_message": "Els subtítols s'han reprès.",
+      "listen_translation": "Escolta la traducció",
+      "stop_translation_audio": "Atura l'àudio",
+      "audio_connecting": "Connectant l'àudio traduït…",
+      "audio_listening": "L'àudio traduït està activat. Fes servir auriculars per no molestar els altres.",
+      "audio_waiting": "Connectat. Esperant la següent traducció completa…",
+      "audio_playing": "Reproduint l'àudio traduït. Fes servir auriculars per no molestar els altres.",
+      "audio_unavailable": "L'àudio traduït no està disponible per a aquest idioma.",
+      "audio_error": "L'àudio traduït s'ha aturat perquè la veu local no ha pogut generar aquest fragment."
     },
     "ceb": {
       "live_captions": "Live nga kapsyon",
@@ -760,7 +776,15 @@
       "no_languages_found": "No languages found.",
       "caption_languages_unavailable": "Translated captions are not available for this service. English source captions are available.",
       "sensitive_paused_message": "Captions are paused for a private or sensitive moment.",
-      "sensitive_resumed_message": "Captions have resumed."
+      "sensitive_resumed_message": "Captions have resumed.",
+      "listen_translation": "Listen",
+      "stop_translation_audio": "Stop audio",
+      "audio_connecting": "Connecting translated audio…",
+      "audio_listening": "Translated audio is on. Use headphones to avoid disturbing others.",
+      "audio_waiting": "Connected. Waiting for the next completed translation…",
+      "audio_playing": "Playing translated audio. Use headphones to avoid disturbing others.",
+      "audio_unavailable": "Translated audio is not available for this language.",
+      "audio_error": "Translated audio stopped because the local voice could not generate this cue."
     },
     "es": {
       "live_captions": "Subtítulos en vivo",
@@ -806,7 +830,15 @@
       "paused_marker": "pausado",
       "no_languages_found": "No se encontraron idiomas.",
       "sensitive_paused_message": "Los subtítulos están pausados por un momento privado o sensible.",
-      "sensitive_resumed_message": "Los subtítulos se han reanudado."
+      "sensitive_resumed_message": "Los subtítulos se han reanudado.",
+      "listen_translation": "Escuchar traducción",
+      "stop_translation_audio": "Detener audio",
+      "audio_connecting": "Conectando el audio traducido…",
+      "audio_listening": "El audio traducido está activado. Usa auriculares para no molestar a los demás.",
+      "audio_waiting": "Conectado. Esperando la siguiente traducción completa…",
+      "audio_playing": "Reproduciendo el audio traducido. Usa auriculares para no molestar a los demás.",
+      "audio_unavailable": "El audio traducido no está disponible para este idioma.",
+      "audio_error": "El audio traducido se detuvo porque la voz local no pudo generar este fragmento."
     },
     "et": {
       "live_captions": "Reaalajas subtiitrid",
@@ -900,7 +932,15 @@
       "paused_marker": "مکث",
       "no_languages_found": "زبانی پیدا نشد.",
       "sensitive_paused_message": "زیرنویس‌ها برای یک لحظه خصوصی یا حساس متوقف شده‌اند.",
-      "sensitive_resumed_message": "زیرنویس‌ها از سر گرفته شدند."
+      "sensitive_resumed_message": "زیرنویس‌ها از سر گرفته شدند.",
+      "listen_translation": "شنیدن ترجمه",
+      "stop_translation_audio": "توقف صدا",
+      "audio_connecting": "در حال اتصال صدای ترجمه…",
+      "audio_listening": "صدای ترجمه روشن است. برای مزاحم نشدن دیگران از هدفون استفاده کنید.",
+      "audio_waiting": "متصل شد. در انتظار ترجمه کامل بعدی…",
+      "audio_playing": "صدای ترجمه در حال پخش است. لطفاً از هدفون استفاده کنید.",
+      "audio_unavailable": "صدای ترجمه برای این زبان در دسترس نیست.",
+      "audio_error": "به‌دلیل خطا در صدای محلی، پخش ترجمه متوقف شد."
     },
     "ff": {
       "live_captions": "Binndol konngol e saa’i",
@@ -1017,7 +1057,15 @@
       "paused_marker": "en pause",
       "no_languages_found": "Aucune langue trouvée.",
       "sensitive_paused_message": "Les sous-titres sont mis en pause pour un moment privé ou sensible.",
-      "sensitive_resumed_message": "Les sous-titres ont repris."
+      "sensitive_resumed_message": "Les sous-titres ont repris.",
+      "listen_translation": "Écouter la traduction",
+      "stop_translation_audio": "Arrêter l'audio",
+      "audio_connecting": "Connexion à l'audio traduit…",
+      "audio_listening": "L'audio traduit est activé. Utilisez des écouteurs pour ne pas déranger les autres.",
+      "audio_waiting": "Connecté. En attente de la prochaine traduction terminée…",
+      "audio_playing": "Lecture de l'audio traduit. Utilisez des écouteurs pour ne pas déranger les autres.",
+      "audio_unavailable": "L'audio traduit n'est pas disponible pour cette langue.",
+      "audio_error": "L'audio traduit s'est arrêté car la voix locale n'a pas pu générer ce passage."
     },
     "fy": {
       "live_captions": "Live ûndertitels",
@@ -1713,7 +1761,15 @@
       "connecting": "Қосылу",
       "dark_theme": "Қараңғы тақырып",
       "paused_marker": "Кідіртілді",
-      "no_languages_found": "Тілдер табылмады."
+      "no_languages_found": "Тілдер табылмады.",
+      "listen_translation": "Аударманы тыңдау",
+      "stop_translation_audio": "Аудионы тоқтату",
+      "audio_connecting": "Аударма аудиосына қосылуда…",
+      "audio_listening": "Аударма аудиосы қосулы. Басқаларға кедергі келтірмеу үшін құлаққапты пайдаланыңыз.",
+      "audio_waiting": "Қосылды. Келесі аяқталған аударма күтілуде…",
+      "audio_playing": "Аударма аудиосы ойнатылуда. Басқаларға кедергі келтірмеу үшін құлаққапты пайдаланыңыз.",
+      "audio_unavailable": "Бұл тіл үшін аударма аудиосы қолжетімсіз.",
+      "audio_error": "Жергілікті дауыс бұл үзіндіні жасай алмағандықтан, аударма аудиосы тоқтатылды."
     },
     "km": {
       "live_captions": "ចំណងជើងផ្ទាល់",
@@ -2003,7 +2059,15 @@
       "no_languages_found": "Valodas nav atrastas.",
       "caption_languages_unavailable": "Tulkotie subtitri šim dievkalpojumam nav pieejami. Ir pieejami angļu avota subtitri.",
       "sensitive_paused_message": "Subtitri ir pauzēti privātam vai sensitīvam brīdim.",
-      "sensitive_resumed_message": "Subtitri ir atsākti."
+      "sensitive_resumed_message": "Subtitri ir atsākti.",
+      "listen_translation": "Klausīties tulkojumu",
+      "stop_translation_audio": "Apturēt audio",
+      "audio_connecting": "Notiek savienošana ar tulkojuma audio…",
+      "audio_listening": "Tulkojuma audio ir ieslēgts. Izmantojiet austiņas, lai netraucētu citiem.",
+      "audio_waiting": "Savienots. Gaida nākamo pabeigto tulkojumu…",
+      "audio_playing": "Atskaņo tulkojuma audio. Izmantojiet austiņas, lai netraucētu citiem.",
+      "audio_unavailable": "Tulkojuma audio šai valodai nav pieejams.",
+      "audio_error": "Tulkojuma audio tika apturēts, jo vietējā balss nevarēja izveidot šo fragmentu."
     },
     "mg": {
       "live_captions": "Soratra mivantana",
@@ -2225,7 +2289,15 @@
       "connecting": "जडान हुँदै",
       "dark_theme": "गाढा थिम",
       "paused_marker": "रोकिएको",
-      "no_languages_found": "कुनै भाषा भेटिएन।"
+      "no_languages_found": "कुनै भाषा भेटिएन।",
+      "listen_translation": "अनुवाद सुन्नुहोस्",
+      "stop_translation_audio": "अडियो रोक्नुहोस्",
+      "audio_connecting": "अनुवादित अडियोमा जडान हुँदैछ…",
+      "audio_listening": "अनुवादित अडियो चालु छ। अरूलाई बाधा नपुगोस् भनेर हेडफोन प्रयोग गर्नुहोस्।",
+      "audio_waiting": "जडान भयो। अर्को पूरा अनुवादको प्रतीक्षामा…",
+      "audio_playing": "अनुवादित अडियो बजिरहेको छ। अरूलाई बाधा नपुगोस् भनेर हेडफोन प्रयोग गर्नुहोस्।",
+      "audio_unavailable": "यो भाषाका लागि अनुवादित अडियो उपलब्ध छैन।",
+      "audio_error": "स्थानीय आवाजले यो अंश बनाउन नसकेकाले अनुवादित अडियो रोकियो।"
     },
     "nl": {
       "live_captions": "Live ondertiteling",
@@ -2271,7 +2343,15 @@
       "paused_marker": "gepauzeerd",
       "no_languages_found": "Geen talen gevonden.",
       "sensitive_paused_message": "Ondertitels zijn gepauzeerd voor een privé of gevoelig moment.",
-      "sensitive_resumed_message": "Ondertitels zijn hervat."
+      "sensitive_resumed_message": "Ondertitels zijn hervat.",
+      "listen_translation": "Vertaling beluisteren",
+      "stop_translation_audio": "Audio stoppen",
+      "audio_connecting": "Verbinding maken met vertaalde audio…",
+      "audio_listening": "Vertaalde audio staat aan. Gebruik een koptelefoon om anderen niet te storen.",
+      "audio_waiting": "Verbonden. Wachten op de volgende voltooide vertaling…",
+      "audio_playing": "Vertaalde audio wordt afgespeeld. Gebruik een koptelefoon om anderen niet te storen.",
+      "audio_unavailable": "Vertaalde audio is niet beschikbaar voor deze taal.",
+      "audio_error": "Vertaalde audio is gestopt omdat de lokale stem dit fragment niet kon genereren."
     },
     "no": {
       "live_captions": "Direkteteksting",
@@ -2772,7 +2852,15 @@
       "no_languages_found": "Ni najdenih jezikov.",
       "caption_languages_unavailable": "Prevedeni podnapisi za to bogoslužje niso na voljo. Angleški izvorni podnapisi so na voljo.",
       "sensitive_paused_message": "Podnapisi so začasno ustavljeni za zaseben ali občutljiv trenutek.",
-      "sensitive_resumed_message": "Podnapisi so se nadaljevali."
+      "sensitive_resumed_message": "Podnapisi so se nadaljevali.",
+      "listen_translation": "Poslušaj prevod",
+      "stop_translation_audio": "Ustavi zvok",
+      "audio_connecting": "Povezovanje s prevedenim zvokom…",
+      "audio_listening": "Prevedeni zvok je vklopljen. Uporabite slušalke, da ne motite drugih.",
+      "audio_waiting": "Povezano. Čakanje na naslednji dokončani prevod…",
+      "audio_playing": "Predvajanje prevedenega zvoka. Uporabite slušalke, da ne motite drugih.",
+      "audio_unavailable": "Prevedeni zvok za ta jezik ni na voljo.",
+      "audio_error": "Prevedeni zvok se je ustavil, ker lokalni glas ni mogel ustvariti tega odseka."
     },
     "so": {
       "live_captions": "Qoraal-hoosaadyo toos ah",
@@ -2966,7 +3054,15 @@
       "no_languages_found": "Inga språk hittades.",
       "caption_languages_unavailable": "Översatta undertexter är inte tillgängliga för denna gudstjänst. Engelska källundertexter är tillgängliga.",
       "sensitive_paused_message": "Undertexter är pausade för ett privat eller känsligt ögonblick.",
-      "sensitive_resumed_message": "Undertexter har återupptagits."
+      "sensitive_resumed_message": "Undertexter har återupptagits.",
+      "listen_translation": "Lyssna på översättningen",
+      "stop_translation_audio": "Stoppa ljudet",
+      "audio_connecting": "Ansluter översatt ljud…",
+      "audio_listening": "Översatt ljud är på. Använd hörlurar för att inte störa andra.",
+      "audio_waiting": "Ansluten. Väntar på nästa slutförda översättning…",
+      "audio_playing": "Spelar upp översatt ljud. Använd hörlurar för att inte störa andra.",
+      "audio_unavailable": "Översatt ljud är inte tillgängligt för det här språket.",
+      "audio_error": "Det översatta ljudet stoppades eftersom den lokala rösten inte kunde skapa det här avsnittet."
     },
     "sw": {
       "live_captions": "Manukuu ya moja kwa moja",
@@ -3105,6 +3201,31 @@
       "no_languages_found": "ไม่พบภาษา",
       "sensitive_paused_message": "คำบรรยายถูกพักไว้สำหรับช่วงเวลาส่วนตัวหรืออ่อนไหว",
       "sensitive_resumed_message": "คำบรรยายกลับมาทำงานแล้ว"
+    },
+    "ti": {
+      "live_captions": "ቀጥታ ጽሑፍ",
+      "waiting": "ቀጥታ ጽሑፍ ይጽበ ኣሎ…",
+      "dnd_title": "ኣይትረብሽ",
+      "ai_notice_title": "ናይ AI ቀጥታ ጽሑፍ መጠንቀቕታ",
+      "translation_notice_title": "ፈተነኣዊ ትርጉም",
+      "language": "ቋንቋ",
+      "theme": "ገጽታ",
+      "comfort": "ምቹእ",
+      "compact": "ጽቕጥቕ",
+      "show_transcript": "ቅዳሕ ኣርኢ",
+      "hide_transcript": "ቅዳሕ ሕባእ",
+      "pause": "ደው ኣብል",
+      "resume": "ቀጽል",
+      "clear": "ኣጽሪ",
+      "live": "ቀጥታ",
+      "reconnecting": "እንደገና ይራኸብ ኣሎ",
+      "connection_issue": "ናይ ምትእስሳር ጸገም",
+      "choose_language": "ቋንቋ ምረጽ",
+      "search_languages": "ቋንቋታት ድለ",
+      "connecting": "ይራኸብ ኣሎ",
+      "dark_theme": "ጸልማት ገጽታ",
+      "paused_marker": "ደው ኢሉ",
+      "no_languages_found": "ቋንቋ ኣይተረኽበን።"
     },
     "tl": {
       "live_captions": "Live na caption",
@@ -3268,7 +3389,15 @@
       "paused_marker": "пауза",
       "no_languages_found": "Мов не знайдено.",
       "sensitive_paused_message": "Субтитри призупинено на час приватного або чутливого моменту.",
-      "sensitive_resumed_message": "Субтитри відновлено."
+      "sensitive_resumed_message": "Субтитри відновлено.",
+      "listen_translation": "Слухати переклад",
+      "stop_translation_audio": "Зупинити аудіо",
+      "audio_connecting": "Підключення аудіоперекладу…",
+      "audio_listening": "Аудіопереклад увімкнено. Користуйтеся навушниками, щоб не заважати іншим.",
+      "audio_waiting": "Підключено. Очікування наступного завершеного перекладу…",
+      "audio_playing": "Відтворюється аудіопереклад. Користуйтеся навушниками, щоб не заважати іншим.",
+      "audio_unavailable": "Аудіопереклад недоступний для цієї мови.",
+      "audio_error": "Аудіопереклад зупинено, оскільки локальний голос не зміг створити цей фрагмент."
     },
     "ur": {
       "live_captions": "لائیو کیپشنز",
@@ -3532,7 +3661,15 @@
       "paused_marker": "已暂停",
       "no_languages_found": "未找到语言。",
       "sensitive_paused_message": "字幕已为私人或敏感时刻暂停。",
-      "sensitive_resumed_message": "字幕已恢复。"
+      "sensitive_resumed_message": "字幕已恢复。",
+      "listen_translation": "收听翻译",
+      "stop_translation_audio": "停止音频",
+      "audio_connecting": "正在连接翻译音频…",
+      "audio_listening": "翻译音频已开启。请使用耳机，以免影响他人。",
+      "audio_waiting": "已连接，正在等待下一段完整翻译…",
+      "audio_playing": "正在播放翻译音频。请使用耳机，以免影响他人。",
+      "audio_unavailable": "此语言暂不提供翻译音频。",
+      "audio_error": "本地语音无法生成此段内容，翻译音频已停止。"
     },
     "zh-hant": {
       "live_captions": "即時字幕",
@@ -3579,7 +3716,15 @@
       "paused_marker": "已暫停",
       "no_languages_found": "未找到語言。",
       "sensitive_paused_message": "字幕已因私人或敏感時刻而暫停。",
-      "sensitive_resumed_message": "字幕已恢復。"
+      "sensitive_resumed_message": "字幕已恢復。",
+      "listen_translation": "收聽翻譯",
+      "stop_translation_audio": "停止音訊",
+      "audio_connecting": "正在連接翻譯音訊…",
+      "audio_listening": "翻譯音訊已開啟。請使用耳機，以免影響他人。",
+      "audio_waiting": "已連接，正在等待下一段完整翻譯…",
+      "audio_playing": "正在播放翻譯音訊。請使用耳機，以免影響他人。",
+      "audio_unavailable": "此語言暫不提供翻譯音訊。",
+      "audio_error": "本機語音無法產生此段內容，翻譯音訊已停止。"
     },
     "zu": {
       "live_captions": "Imibhalo ebukhoma",

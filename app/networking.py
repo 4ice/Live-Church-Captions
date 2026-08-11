@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import platform
 import socket
 import subprocess
 from functools import lru_cache
+
+from app.settings import get_settings
 
 
 def local_ip() -> str:
@@ -24,18 +27,26 @@ def _run(cmd: list[str]) -> str | None:
 
 
 @lru_cache(maxsize=1)
+def local_hostname_is_configured() -> bool:
+    configured = (os.environ.get("CAPTION_LOCAL_HOSTNAME", "") or get_settings().caption_local_hostname or "").strip()
+    if configured:
+        return True
+    return platform.system() == "Darwin" and bool(_run(["scutil", "--get", "LocalHostName"]))
+
+
+@lru_cache(maxsize=1)
 def detected_local_hostname() -> str:
-    """Return the best friendly local hostname for QR codes.
+    """Return an explicit or suggested friendly hostname for QR codes.
 
     On macOS, scutil LocalHostName maps to Bonjour/mDNS as <name>.local.
-    If it is not configured, fall back to socket hostname + .local if sensible,
-    and finally to the LAN IP address.
+    Other platforms can show a safe <computer-name>.local candidate, but the UI
+    labels it as requiring DNS/mDNS setup until explicitly configured.
     """
-    configured = os.environ.get("CAPTION_LOCAL_HOSTNAME", "").strip()
+    configured = (os.environ.get("CAPTION_LOCAL_HOSTNAME", "") or get_settings().caption_local_hostname or "").strip()
     if configured:
         return configured[:-1] if configured.endswith(".") else configured
 
-    local_host = _run(["scutil", "--get", "LocalHostName"])
+    local_host = _run(["scutil", "--get", "LocalHostName"]) if platform.system() == "Darwin" else None
     if local_host:
         return local_host if local_host.endswith(".local") else f"{local_host}.local"
 

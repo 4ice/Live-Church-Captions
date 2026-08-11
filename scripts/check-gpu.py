@@ -31,7 +31,7 @@ print("Church Cap GPU check")
 print(f"Platform: {status.platform}")
 print(f"CUDA available to faster-whisper: {'yes' if status.cuda_available else 'no'}")
 print(f"CUDA device count: {status.cuda_device_count}")
-print(f"CUDA runtime DLLs ready: {'yes' if status.cuda_runtime_ready else 'no'}")
+print(f"CUDA runtime libraries ready: {'yes' if status.cuda_runtime_ready else 'no'}")
 if status.missing_cuda_libraries:
     print("Missing CUDA runtime files:", ", ".join(status.missing_cuda_libraries))
 print(f"nvidia-smi available: {'yes' if status.nvidia_smi_available else 'no'}")

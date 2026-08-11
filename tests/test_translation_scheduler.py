@@ -38,6 +38,17 @@ class DelayedTranslator:
         return TranslationResult(text=f"{target_language}:{text}", applied=True)
 
 
+class ReadySpeechManager:
+    def public_state(self):
+        return {
+            "enabled": True,
+            "operator_enabled": True,
+            "available_languages": ["fa", "zh-hans", "zh-hant"],
+            "framework": "sherpa-onnx",
+            "runtime_available": True,
+        }
+
+
 class TranslationSchedulerTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
@@ -56,6 +67,18 @@ class TranslationSchedulerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(hub.source_language, "en")
         self.assertIn("en", state["available_languages"])
         self.assertIn("en", state["allowed_languages"])
+
+    async def test_live_viewer_metadata_keeps_translated_audio_readiness(self):
+        hub = CaptionHub(
+            transcript_store=self.transcript_store,
+            translation_speech_manager=ReadySpeechManager(),
+        )
+
+        state = hub.translation_state()
+
+        self.assertTrue(state["translated_audio"]["enabled"])
+        self.assertTrue(state["translated_audio"]["operator_enabled"])
+        self.assertEqual(state["translated_audio"]["available_languages"], ["fa", "zh-hans", "zh-hant"])
 
     async def asyncTearDown(self):
         task = getattr(self, "worker_task", None)

@@ -6,6 +6,7 @@ import subprocess
 import os
 import site
 import sys
+import ctypes
 from dataclasses import asdict, dataclass, field
 import json
 from functools import lru_cache
@@ -229,6 +230,20 @@ def prepare_python_cuda_dll_dirs() -> tuple[str, ...]:
 
 
 def _cuda_runtime_status(system_name: str) -> tuple[bool, list[str]]:
+    if system_name == "Linux":
+        # Device enumeration only talks to the NVIDIA driver. CTranslate2
+        # loads cuBLAS/cuDNN lazily when inference begins, so verify the exact
+        # shared-library ABI required by current faster-whisper before calling
+        # CUDA ready.
+        required = ["libcublas.so.12", "libcudnn.so.9"]
+        missing = []
+        for name in required:
+            try:
+                ctypes.CDLL(name)
+            except OSError:
+                missing.append(name)
+        return not missing, missing
+
     if system_name != "Windows":
         return True, []
 
@@ -262,8 +277,13 @@ def detect_hardware_acceleration() -> HardwareAccelerationStatus:
         cuda_runtime_status = "ready" if cuda_runtime_ready else "missing_dlls"
     elif system_name == "Linux":
         nvidia_driver_status = "detected" if nvidia_smi_available else "not_detected"
-        ctranslate2_cuda_status = "usable" if cuda_count > 0 else ("not_exposed" if nvidia_smi_available else "not_detected")
-        cuda_runtime_status = "ready" if cuda_count > 0 else "system_managed"
+        if cuda_count > 0 and cuda_runtime_ready:
+            ctranslate2_cuda_status = "usable"
+        elif cuda_count > 0:
+            ctranslate2_cuda_status = "runtime_missing"
+        else:
+            ctranslate2_cuda_status = "not_exposed" if nvidia_smi_available else "not_detected"
+        cuda_runtime_status = "ready" if cuda_runtime_ready else "missing_libraries"
     else:
         nvidia_driver_status = "not_applicable"
         ctranslate2_cuda_status = "not_applicable"
@@ -278,10 +298,17 @@ def detect_hardware_acceleration() -> HardwareAccelerationStatus:
         message = f"CUDA ready: NVIDIA driver detected{names}, CTranslate2 sees {cuda_count} CUDA device(s){runtime_note}. Church Cap can use faster-whisper on CUDA."
     elif cuda_count > 0 and not cuda_runtime_ready:
         missing = ", ".join(missing_cuda_libraries)
-        message = (
-            f"CUDA not ready: CTranslate2 can see {cuda_count} CUDA device(s), but required runtime DLLs are missing: {missing}. "
-            "Church Cap will fall back to CPU / int8 until the local NVIDIA CUDA runtime is repaired."
-        )
+        if system_name == "Linux":
+            message = (
+                f"CUDA not ready: CTranslate2 can see {cuda_count} CUDA device(s), but required runtime libraries are not loadable: {missing}. "
+                "Run install-cuda-runtime-linux.sh or install compatible CUDA 12 cuBLAS and cuDNN 9 system-wide. "
+                "Church Cap will use CPU / int8 until the runtime is available."
+            )
+        else:
+            message = (
+                f"CUDA not ready: CTranslate2 can see {cuda_count} CUDA device(s), but required runtime DLLs are missing: {missing}. "
+                "Church Cap will fall back to CPU / int8 until the local NVIDIA CUDA runtime is repaired."
+            )
     elif nvidia_smi_available:
         names = f" ({', '.join(nvidia_gpu_names)})" if nvidia_gpu_names else ""
         detail = f" {cuda_message}" if cuda_message else ""

@@ -44,6 +44,11 @@ CT2_SMALL100_MODEL_NAME = "alirezamsh/small100"
 CT2_SMALL100_MODEL_REVISION = "8ab680e26a596d2e3d2d2d17ae0f68df1037328c"
 CT2_SMALL100_TOKENIZER_SHA256 = "73c8d2405e9c588582434c9f91327127faf133b9f915b203ed07ba4cd0ca9c92"
 CT2_SMALL100_MODEL_DIR = Path(os.environ.get("CHURCHCAP_CT2_SMALL100_DIR") or PROJECT_ROOT / "data" / "models" / "small100-ct2-int8")
+OPUS_TIGRINYA_PROVIDER = "opus_tigrinya"
+OPUS_TIGRINYA_MODEL_NAME = "Helsinki-NLP/opus-mt-en-ti"
+OPUS_TIGRINYA_MODEL_REVISION = "72f1e40b4b60ff4863407f90792b4fac517562ec"
+OPUS_TIGRINYA_MODEL_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_DIR") or PROJECT_ROOT / "data" / "models" / "opus-mt-en-ti-ct2-int8")
+OPUS_TIGRINYA_TOKENIZER_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_TOKENIZER_DIR") or PROJECT_ROOT / "data" / "models" / "opus-mt-en-ti-tokenizer")
 CHINESE_SIMPLIFIED = "zh-hans"
 CHINESE_TRADITIONAL = "zh-hant"
 CHINESE_VARIANTS = {
@@ -70,6 +75,7 @@ BASE_LANGUAGES: list[dict[str, str]] = [
     {"code": "uk", "name": "Ukrainian", "native": "Українська", "flag": "🇺🇦", "dir": "ltr"},
     {"code": "ar", "name": "Arabic", "native": "العربية", "flag": "🇸🇦", "dir": "rtl"},
     {"code": "fa", "name": "Farsi", "native": "فارسی", "flag": "🇮🇷", "dir": "rtl"},
+    {"code": "ti", "name": "Tigrinya", "native": "ትግርኛ", "flag": "🇪🇷", "dir": "ltr"},
     {"code": CHINESE_SIMPLIFIED, "name": "Chinese (Simplified)", "native": "简体中文", "flag": "🇨🇳", "dir": "ltr"},
     {"code": CHINESE_TRADITIONAL, "name": "Chinese (Traditional, Hong Kong)", "native": "繁體中文（香港）", "flag": "🇭🇰", "dir": "ltr"},
 ]
@@ -128,6 +134,15 @@ def _language_dir(code: str) -> str:
     return "rtl" if code in {"ar", "fa", "he", "ps", "ur", "yi"} else "ltr"
 
 
+def _flag_country_code(flag: str) -> str:
+    """Return an ISO-style asset code for a two-character Unicode flag."""
+    points = [ord(character) for character in str(flag or "")]
+    regional_a = 0x1F1E6
+    if len(points) != 2 or any(point < regional_a or point > 0x1F1FF for point in points):
+        return ""
+    return "".join(chr(ord("a") + point - regional_a) for point in points)
+
+
 def _merge_supported_languages() -> list[dict[str, str]]:
     by_code = {item["code"]: dict(item) for item in BASE_LANGUAGES}
     for code, name in SMALL100_LANGUAGE_NAMES.items():
@@ -141,7 +156,10 @@ def _merge_supported_languages() -> list[dict[str, str]]:
                 "flag": LANGUAGE_FLAGS.get(code, "🌐"),
                 "dir": _language_dir(code),
             }
-    return sorted(by_code.values(), key=lambda item: (item["code"] != SOURCE_LANGUAGE, item["name"]))
+    languages = sorted(by_code.values(), key=lambda item: (item["code"] != SOURCE_LANGUAGE, item["name"]))
+    for language in languages:
+        language["flag_code"] = _flag_country_code(language.get("flag", ""))
+    return languages
 
 
 SUPPORTED_LANGUAGES: list[dict[str, str]] = _merge_supported_languages()
@@ -218,6 +236,8 @@ class LocalTranslator:
         self._small100_tokenizer: Any | None = None
         self._ct2small100_translator: Any | None = None
         self._ct2small100_tokenizer: Any | None = None
+        self._opus_tigrinya_translator: Any | None = None
+        self._opus_tigrinya_tokenizer: Any | None = None
         self._opencc_converters: dict[str, Any] = {}
 
     @staticmethod
@@ -348,6 +368,29 @@ class LocalTranslator:
                 "message": f"Recommended package / CTranslate2 INT8 model is not converted yet. Install it from the Languages page or run scripts/install-small100-ct2-int8.*.",
                 "model_dir": str(CT2_SMALL100_MODEL_DIR),
             }
+        if provider == OPUS_TIGRINYA_PROVIDER:
+            missing = [name for name in ("ctranslate2", "transformers", "sentencepiece") if importlib.util.find_spec(name) is None]
+            model_ready = False
+            if not missing:
+                try:
+                    import ctranslate2  # type: ignore
+                    contains = getattr(ctranslate2, "contains_model", None)
+                    model_ready = bool(contains(str(OPUS_TIGRINYA_MODEL_DIR))) if contains else (OPUS_TIGRINYA_MODEL_DIR / "model.bin").is_file()
+                except Exception:
+                    model_ready = False
+            ready = model_ready and all(
+                (OPUS_TIGRINYA_TOKENIZER_DIR / filename).is_file()
+                for filename in ("tokenizer_config.json", "source.spm", "target.spm", "vocab.json")
+            )
+            return {
+                "provider": OPUS_TIGRINYA_PROVIDER,
+                "ready": ready,
+                "message": (
+                    "The Recommended bundle's Apache-2.0 English-to-Tigrinya text model is installed and verified."
+                    if ready else "The Recommended language bundle needs installation or repair before Tigrinya can be used."
+                ),
+                "model_dir": str(OPUS_TIGRINYA_MODEL_DIR),
+            }
         return {"provider": provider, "ready": False, "message": f"Unknown translation provider: {provider}"}
 
     def translation_resources(self) -> dict[str, Any]:
@@ -394,6 +437,12 @@ class LocalTranslator:
                 "status": self.provider_status("small100"),
                 "license": "MIT",
             },
+            "opus_tigrinya": {
+                "languages": ["ti"],
+                "status": self.provider_status(OPUS_TIGRINYA_PROVIDER),
+                "license": "Apache-2.0",
+                "model": OPUS_TIGRINYA_MODEL_NAME,
+            },
             "chinese_script_conversion": chinese_conversion,
         }
 
@@ -408,6 +457,7 @@ class LocalTranslator:
         ct2_languages = set(resources.get("ct2small100", {}).get("languages", [])) if ct2_ready else set()
         small100_ready = bool(resources.get("small100", {}).get("status", {}).get("ready"))
         small100_languages = set(resources.get("small100", {}).get("languages", [])) if small100_ready else set()
+        tigrinya_ready = bool(resources.get("opus_tigrinya", {}).get("status", {}).get("ready"))
         if provider == "argos":
             languages = argos_languages
         elif provider == CT2_SMALL100_PROVIDER:
@@ -422,6 +472,8 @@ class LocalTranslator:
                 languages -= set(CHINESE_VARIANTS)
         else:
             languages = set()
+        if tigrinya_ready and provider in {"argos", CT2_SMALL100_PROVIDER, "small100", "both"}:
+            languages.add("ti")
         languages.add(self.source_language)
         return sorted(language for language in languages if language in LANGUAGE_BY_CODE)
 
@@ -430,6 +482,8 @@ class LocalTranslator:
         self._small100_tokenizer = None
         self._ct2small100_translator = None
         self._ct2small100_tokenizer = None
+        self._opus_tigrinya_translator = None
+        self._opus_tigrinya_tokenizer = None
         try:
             import gc
             gc.collect()
@@ -483,7 +537,11 @@ class LocalTranslator:
 
         attempts: list[str] = []
         actual_provider: str | None = None
-        if provider == "demo":
+        if target_language == "ti" and provider != "demo":
+            attempts.append(OPUS_TIGRINYA_PROVIDER)
+            result = self._translate_with_opus_tigrinya(text)
+            actual_provider = OPUS_TIGRINYA_PROVIDER
+        elif provider == "demo":
             attempts.append("demo")
             result = TranslationResult(
                 text=f"[{target_language.upper()} demo] {text}",
@@ -709,6 +767,46 @@ class LocalTranslator:
             inter_threads=1,
         )
         return self._ct2small100_translator, self._ct2small100_tokenizer
+
+    def _load_opus_tigrinya(self) -> tuple[Any, Any]:
+        if self._opus_tigrinya_translator is not None and self._opus_tigrinya_tokenizer is not None:
+            return self._opus_tigrinya_translator, self._opus_tigrinya_tokenizer
+        status = self.provider_status(OPUS_TIGRINYA_PROVIDER)
+        if not status.get("ready"):
+            raise RuntimeError(status.get("message") or "The Recommended language bundle is not ready for Tigrinya.")
+        import ctranslate2  # type: ignore
+        from transformers import AutoTokenizer  # type: ignore
+        try:
+            cuda_devices = int(ctranslate2.get_cuda_device_count())
+        except Exception:
+            cuda_devices = 0
+        device = "cuda" if cuda_devices > 0 else "cpu"
+        compute_type = "int8_float16" if device == "cuda" else "int8"
+        self._opus_tigrinya_tokenizer = AutoTokenizer.from_pretrained(
+            str(OPUS_TIGRINYA_TOKENIZER_DIR), local_files_only=True
+        )
+        self._opus_tigrinya_translator = ctranslate2.Translator(
+            str(OPUS_TIGRINYA_MODEL_DIR), device=device, compute_type=compute_type, inter_threads=1
+        )
+        return self._opus_tigrinya_translator, self._opus_tigrinya_tokenizer
+
+    def _translate_with_opus_tigrinya(self, text: str) -> TranslationResult:
+        try:
+            translator, tokenizer = self._load_opus_tigrinya()
+            input_ids = tokenizer.encode(text, truncation=True, max_length=256)
+            if not input_ids:
+                return TranslationResult(text=text, applied=False, warning="Tigrinya tokenizer did not return input IDs.")
+            source_tokens = tokenizer.convert_ids_to_tokens(input_ids)
+            output = translator.translate_batch(
+                [source_tokens], beam_size=2, max_input_length=256, max_decoding_length=256
+            )[0]
+            tokens = list(output.hypotheses[0]) if output.hypotheses else []
+            translated = self._decode_tokens(tokenizer, tokens)
+            if translated and translated != text:
+                return TranslationResult(text=translated, applied=True)
+            return TranslationResult(text=text, applied=False, warning="Tigrinya translation returned the source caption.")
+        except Exception as exc:
+            return TranslationResult(text=text, applied=False, warning=f"Tigrinya text translation failed: {exc}")
 
     @staticmethod
     def _tokenizer_language_token(tokenizer: Any, language: str) -> str:

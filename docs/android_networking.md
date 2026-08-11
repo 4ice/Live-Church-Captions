@@ -20,12 +20,14 @@ Common causes:
 
 ## Built-in fallback
 
-The operator page now shows two QR codes:
+The operator page shows two QR codes:
 
-1. **Preferred hostname QR** — `church-cap.local` or the Mac's detected hostname.
+1. **Hostname QR** — preferred when configured; otherwise retained and labelled as requiring DNS/mDNS setup.
 2. **Android / guest Wi‑Fi fallback QR** — the direct LAN IP address and port.
 
 Use the IP fallback if Android cannot open the `.local` address.
+
+On Linux without configured local DNS/mDNS, Church Cap keeps the hostname QR available for later setup, labels it accordingly, and marks the direct-IP QR as the recommended connection. If the IP cannot be opened either, check the Linux host firewall and router guest/client isolation.
 
 ## Best production options
 

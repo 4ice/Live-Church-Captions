@@ -58,7 +58,11 @@ This installer supports the common package-manager families:
 
 It installs only the system packages needed for Python, PortAudio and builds.
 Church Cap's Python packages stay inside this folder's .venv.
-It does not enable extra repositories or install NVIDIA drivers/CUDA.
+It does not enable extra repositories or install NVIDIA drivers. If an NVIDIA
+driver is already working, setup can optionally add the CUDA 12 cuBLAS and
+cuDNN 9 runtime libraries required by CTranslate2 inside the local .venv.
+If an active Linux firewall is detected, setup can also add the recommended
+audience-only TCP rule after asking for permission.
 
 INTRO
 
@@ -74,10 +78,10 @@ case "${answer:-}" in
   *) echo "Setup cancelled."; exit 0 ;;
 esac
 
-step "1/5 Installing required system packages"
+step "1/7 Installing required system packages"
 install_linux_system_packages "$PACKAGE_MANAGER"
 
-step "2/5 Finding Python 3.10 or newer"
+step "2/7 Finding Python 3.10 or newer"
 PYTHON_BIN="$(find_supported_linux_python || true)"
 if [[ -z "$PYTHON_BIN" ]]; then
   echo "A supported Python was not found after package installation." >&2
@@ -86,7 +90,7 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 echo "Using $("$PYTHON_BIN" --version) at $PYTHON_BIN"
 
-step "3/5 Creating the local virtual environment"
+step "3/7 Creating the local virtual environment"
 if [[ ! -d ".venv" ]]; then
   "$PYTHON_BIN" -m venv .venv
 else
@@ -98,14 +102,93 @@ if [[ ! -x "$VENV_PY" ]]; then
   exit 1
 fi
 
-step "4/5 Installing Church Cap inside .venv"
+step "4/7 Installing Church Cap inside .venv"
 "$VENV_PY" -m ensurepip --upgrade >/dev/null 2>&1 || true
 "$VENV_PY" -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 "$VENV_PY" -m pip install -r requirements.txt
 mkdir -p data logs certs
 create_env_if_missing
 
-step "5/5 Optional local translation resources"
+VIEWER_PORT="$("$VENV_PY" -c 'from app.settings import get_settings; print(get_settings().viewer_port)' 2>/dev/null || true)"
+if [[ ! "$VIEWER_PORT" =~ ^[0-9]+$ ]] || (( VIEWER_PORT < 1 || VIEWER_PORT > 65535 )); then
+  VIEWER_PORT=8080
+fi
+AUDIENCE_IP="$("$VENV_PY" -c 'from app.networking import local_ip; print(local_ip())' 2>/dev/null || true)"
+AUDIENCE_IP="${AUDIENCE_IP:-127.0.0.1}"
+
+step "5/7 Checking recommended audience firewall access"
+FIREWALL_MANAGER="$(linux_active_firewall_manager || true)"
+FIREWALL_ZONE=""
+FIREWALL_RULE_READY="no"
+if [[ "$FIREWALL_MANAGER" == "firewalld" ]]; then
+  FIREWALL_ZONE="$(linux_firewalld_zone || true)"
+  if [[ -n "$FIREWALL_ZONE" ]] && linux_firewalld_port_is_allowed "$VIEWER_PORT" "$FIREWALL_ZONE"; then
+    FIREWALL_RULE_READY="yes"
+  fi
+fi
+
+if [[ "$FIREWALL_RULE_READY" == "yes" ]]; then
+  echo "Audience TCP port $VIEWER_PORT is already allowed by firewalld in zone $FIREWALL_ZONE."
+elif [[ -n "$FIREWALL_MANAGER" ]]; then
+  echo "Recommended: allow audience phones to reach Church Cap on TCP port $VIEWER_PORT."
+  if [[ "$FIREWALL_MANAGER" == "firewalld" ]]; then
+    echo "Detected firewalld zone: ${FIREWALL_ZONE:-unknown}."
+  else
+    echo "Detected active firewall: UFW."
+  fi
+  echo "This opens only the public caption viewer port. It does not open operator port 9090."
+  echo "Use this only on a trusted church/AV network; router guest isolation may still need a separate rule."
+  read -r -p "Add the recommended audience firewall rule now? [y/N] " firewall_answer
+  case "${firewall_answer:-no}" in
+    y|Y|yes|YES)
+      if [[ "$FIREWALL_MANAGER" == "firewalld" && -z "$FIREWALL_ZONE" ]]; then
+        echo "Could not determine the active firewalld zone; no rule was changed." >&2
+      elif allow_linux_audience_port "$FIREWALL_MANAGER" "$VIEWER_PORT" "$FIREWALL_ZONE"; then
+        echo "Allowed TCP port $VIEWER_PORT for audience captions."
+      else
+        echo "The firewall rule could not be added. Setup will continue." >&2
+        echo "Allow TCP port $VIEWER_PORT manually before audience phones connect." >&2
+      fi
+      ;;
+    *)
+      echo "Skipping the firewall change. Audience QR codes may not work until TCP port $VIEWER_PORT is allowed."
+      ;;
+  esac
+else
+  echo "No active supported firewalld or UFW firewall was detected; setup did not change the host firewall."
+  echo "If phones still cannot connect, check guest Wi-Fi/client isolation on the router."
+fi
+
+step "6/7 Checking optional NVIDIA CUDA runtime"
+# shellcheck source=scripts/linux-cuda-runtime.sh
+source "$APP_DIR/scripts/linux-cuda-runtime.sh"
+prepare_linux_python_cuda_library_path "$VENV_PY"
+read -r NVIDIA_GPU_VISIBLE CUDA_RUNTIME_READY < <(
+  "$VENV_PY" -c 'from app.hardware import detect_hardware_acceleration; status = detect_hardware_acceleration(); print("yes" if status.nvidia_smi_available or status.cuda_device_count > 0 else "no", "yes" if status.cuda_available else "no")'
+)
+if [[ "$NVIDIA_GPU_VISIBLE" == "yes" ]]; then
+  if [[ "$CUDA_RUNTIME_READY" == "yes" ]]; then
+    echo "NVIDIA CUDA 12 runtime is already ready for CTranslate2."
+    "$VENV_PY" scripts/check-gpu.py
+  else
+    echo "An NVIDIA driver/GPU is visible, but CTranslate2 cannot yet load all required CUDA runtime libraries."
+    echo "Church Cap needs CUDA 12 cuBLAS and cuDNN 9; nvidia-smi alone does not install these libraries."
+    echo "The optional runtime is a large internet download and stays inside this Church Cap folder."
+    read -r -p "Install the local CUDA runtime libraries inside .venv now? [y/N] " cuda_answer
+    case "${cuda_answer:-no}" in
+      y|Y|yes|YES) ./install-cuda-runtime-linux.sh ;;
+      *)
+        echo "Skipping local CUDA runtime. Church Cap will use CPU / int8 unless a compatible system runtime is available."
+        echo "You can install it later with: ./install-cuda-runtime-linux.sh"
+        ;;
+    esac
+  fi
+else
+  echo "No working NVIDIA driver/GPU was detected; skipping the optional CUDA runtime."
+  echo "Church Cap will use CPU / int8."
+fi
+
+step "7/7 Optional local translation resources"
 echo "Translation is optional and experimental. You can install it later from the operator Languages page."
 echo "  1) Install common Base package / Argos packs"
 echo "  2) Install all available Base package / Argos packs"
@@ -127,7 +210,7 @@ case "${translation_answer:-5}" in
   *) echo "Skipping translation resources." ;;
 esac
 
-cat <<'DONE'
+cat <<DONE
 
 Setup complete.
 
@@ -138,6 +221,9 @@ Operator page:
   http://localhost:9090/operator
 
 Audience phones use the LAN/IP QR code shown on the operator page.
+On Linux, the direct-IP QR is the reliable default unless local DNS or mDNS has been configured.
+Current audience URL: http://${AUDIENCE_IP}:${VIEWER_PORT}/
+If a phone cannot open it, confirm the phone is on the same LAN and that the router does not isolate Wi-Fi clients.
 For a dedicated Linux caption server, run Church Cap as a normal user rather than root.
 
 DONE

@@ -30,7 +30,7 @@ run_as_root() {
   elif command -v sudo >/dev/null 2>&1; then
     sudo "$@"
   else
-    echo "Root access is required to install system packages. Install sudo or run setup as root." >&2
+    echo "Root access is required for this system change. Install sudo or run setup as root." >&2
     return 1
   fi
 }
@@ -48,6 +48,74 @@ find_supported_linux_python() {
     fi
   done
   return 1
+}
+
+linux_active_firewall_manager() {
+  local ufw_enabled=""
+
+  if command -v firewall-cmd >/dev/null 2>&1 && [[ "$(firewall-cmd --state 2>/dev/null || true)" == "running" ]]; then
+    printf 'firewalld\n'
+    return 0
+  fi
+
+  if [[ -r /etc/ufw/ufw.conf ]]; then
+    ufw_enabled="$(sed -n 's/^ENABLED=//p' /etc/ufw/ufw.conf | tail -n 1)"
+  fi
+  if command -v ufw >/dev/null 2>&1 && {
+    [[ "$ufw_enabled" == "yes" ]] || { command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet ufw; }
+  }; then
+    printf 'ufw\n'
+    return 0
+  fi
+
+  return 1
+}
+
+linux_firewalld_zone() {
+  local interface=""
+  local zone=""
+
+  if command -v ip >/dev/null 2>&1; then
+    interface="$(ip -o route show to default 2>/dev/null | awk '{print $5; exit}' || true)"
+  fi
+  if [[ -n "$interface" ]]; then
+    zone="$(firewall-cmd --get-zone-of-interface="$interface" 2>/dev/null || true)"
+  fi
+  if [[ -z "$zone" || "$zone" == "no zone" ]]; then
+    zone="$(firewall-cmd --get-default-zone 2>/dev/null || true)"
+  fi
+  if [[ "$zone" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    printf '%s\n' "$zone"
+    return 0
+  fi
+  return 1
+}
+
+linux_firewalld_port_is_allowed() {
+  local port="$1"
+  local zone="$2"
+  firewall-cmd --zone="$zone" --query-port="${port}/tcp" >/dev/null 2>&1 &&
+    firewall-cmd --permanent --zone="$zone" --query-port="${port}/tcp" >/dev/null 2>&1
+}
+
+allow_linux_audience_port() {
+  local manager="$1"
+  local port="$2"
+  local zone="${3:-}"
+
+  case "$manager" in
+    firewalld)
+      run_as_root firewall-cmd --permanent --zone="$zone" --add-port="${port}/tcp" &&
+        run_as_root firewall-cmd --zone="$zone" --add-port="${port}/tcp"
+      ;;
+    ufw)
+      run_as_root ufw allow "${port}/tcp" comment "Church Cap audience captions"
+      ;;
+    *)
+      echo "Unsupported firewall manager: $manager" >&2
+      return 1
+      ;;
+  esac
 }
 
 dnf_python_package() {

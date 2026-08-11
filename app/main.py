@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import io
+import importlib
 import inspect
 import json
 import os
@@ -13,9 +14,10 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import qrcode
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -39,7 +41,16 @@ from app.auth import (
     throttle_key,
 )
 from app.broadcast import CaptionHub
+from app.bible_references import format_bible_references
 from app.glossary import Glossary
+from app.install_progress import (
+    INSTALL_PROGRESS_ENV,
+    clear_install_progress,
+    read_install_progress,
+    write_install_progress,
+)
+from app.service_context import ServiceContextError, service_context
+from app.service_context_extractor import MAX_UPLOAD_BYTES, ServiceContextInputError, decode_uploaded_notes, normalise_notes
 from app.models import CaptionSegment
 from app.metrics import (
     clear_service_metrics,
@@ -58,8 +69,8 @@ from app.hardware import HardwareAccelerationStatus, detect_hardware_acceleratio
 from app.deployment import deployment_context
 from app.profanity_filter import ProfanityFilter
 from app.settings import get_settings
-from app.networking import default_base_url, detected_local_hostname, local_ip
-from app.runtime_config import load_runtime_config, set_audio_device, set_performance_config, set_privacy_config, set_profanity_filter_config, set_translation_config, set_security_config
+from app.networking import default_base_url, detected_local_hostname, local_hostname_is_configured, local_ip
+from app.runtime_config import load_runtime_config, set_audio_device, set_performance_config, set_privacy_config, set_profanity_filter_config, set_translation_config, set_translated_audio_config, set_security_config
 from app.i18n import LANGUAGE_BY_CODE, SOURCE_LANGUAGE, SUPPORTED_LANGUAGES, normalise_language
 from app.localisation import get_client_ui_language_strings, get_client_ui_sources, get_client_ui_strings, get_runtime_translated_client_ui_strings
 from app.paths import app_support_dir
@@ -67,6 +78,13 @@ from app.service_leader_auth import SERVICE_LEADER_COOKIE_NAME, ServiceLeaderAcc
 from app.platforms import performance_platform_key
 from app.storage import clear_storage_candidates, rotate_log_file, rotate_runtime_logs, storage_snapshot, tail_log_lines
 from app.transcript_store import TranscriptStore
+from app.tts import TranslationSpeechManager, uninstall_reviewed_voice_packages
+from app.tts_catalog import (
+    ALL_VOICE_PACKAGE_IDS,
+    VOICE_PACKAGES,
+    normalise_voice_package_selection,
+    public_voice_catalog,
+)
 from app.updater import fetch_remote_version, is_remote_newer, launch_update_process, poll_update_process_state, update_script_for_system, version_label
 
 try:
@@ -263,6 +281,7 @@ def public_translation_state() -> dict:
             for item in (state.get("language_requests") or [])
             if isinstance(item, dict) and item.get("code")
         ],
+        "translated_audio": translation_speech.public_state(),
     }
 
 
@@ -275,10 +294,16 @@ startup_translation_max_active = int(runtime_config.get("translation_max_active_
 startup_translation_limit = startup_capabilities.get("translation_max_limit")
 if isinstance(startup_translation_limit, int) and startup_translation_limit > 0:
     startup_translation_max_active = min(startup_translation_max_active, startup_translation_limit)
+translation_speech = TranslationSpeechManager(
+    num_threads=settings.tts_num_threads,
+    provider=settings.tts_provider,
+    operator_enabled=bool(runtime_config.get("translated_audio_enabled", True)),
+)
 hub = CaptionHub(
     retention_minutes=int(runtime_config.get("transcript_retention_minutes", settings.transcript_retention_minutes)),
     transcript_saving_enabled=bool(runtime_config.get("transcript_saving_enabled", settings.transcript_saving_enabled)),
     translation_queue_capacity_per_language=settings.translation_queue_capacity_per_language,
+    translation_speech_manager=translation_speech,
 )
 hub.configure_translation(
     enabled=startup_translation_allowed and bool(runtime_config.get("translation_enabled", settings.translation_enabled)),
@@ -310,6 +335,7 @@ DOC_FILES = {
     "disclaimer": ("Disclaimers", "docs/legal/DISCLAIMER.md"),
     "church-notice": ("Church notice wording", "docs/legal/NOTICE_TEMPLATE_FOR_CHURCHES.md"),
     "translation": ("Translation notes", "docs/translation.md"),
+    "spoken-language-models": ("Spoken-language model notices", "docs/legal/SPOKEN_LANGUAGE_MODELS.md"),
 }
 
 _transcription_task: asyncio.Task | None = None
@@ -321,14 +347,53 @@ _cuda_runtime_install_state = {"status": "idle"}
 _cuda_runtime_install_process: subprocess.Popen | None = None
 _translation_install_state = {"status": "idle"}
 _translation_install_process: subprocess.Popen | None = None
+_tts_install_state = {"status": "idle"}
+_tts_install_process: subprocess.Popen | None = None
 _language_requests: dict[str, dict[str, object]] = {}
 CUDA_RUNTIME_LOG_LABEL = "logs/cuda-runtime-install.log"
-TRANSLATION_INSTALL_LOG_LABEL = "logs/translation-install.log"
+TRANSLATION_INSTALL_LOG_LABEL = (
+    r"%APPDATA%\Church Cap\logs\translation-install.log"
+    if platform.system() == "Windows"
+    else "Church Cap data/logs/translation-install.log"
+)
+TTS_INSTALL_LOG_LABEL = "logs/translated-audio-install.log"
 UPDATE_LOG_LABEL = "logs/update.log"
 service_leader_access = ServiceLeaderAccessManager()
 
 DOWNLOAD_HANDOFF_TTL_SECONDS = 10 * 60
 _download_handoff_tokens: dict[str, dict[str, object]] = {}
+
+
+def _installer_progress_path(kind: str) -> Path:
+    filename = "translation-install-progress.json" if kind == "translation" else "translated-audio-install-progress.json"
+    return app_support_dir() / "data" / filename
+
+
+def _initialise_installer_progress(kind: str, *, detail: str, items: list[dict] | None = None) -> dict:
+    path = _installer_progress_path(kind)
+    try:
+        clear_install_progress(path)
+        return write_install_progress(1, "preparing", detail, path=path, items=items)
+    except OSError:
+        return {"percent": 1, "phase": "preparing", "detail": detail, "items": items or [], "indeterminate": True}
+
+
+def _current_installer_progress(kind: str, fallback: dict | None = None) -> dict:
+    return read_install_progress(_installer_progress_path(kind)) or dict(fallback or {})
+
+
+def _finished_installer_progress(progress: dict, *, success: bool, detail: str) -> dict:
+    items = []
+    for item in list(progress.get("items") or []):
+        items.append({**item, "percent": 100 if success else item.get("percent", 0), "state": "complete" if success else item.get("state", "error")})
+    return {
+        **progress,
+        "percent": 100 if success else int(progress.get("percent") or 0),
+        "phase": "complete" if success else "error",
+        "detail": detail,
+        "items": items,
+        "indeterminate": False,
+    }
 
 
 
@@ -553,9 +618,14 @@ def base_template_context(request: Request | None = None) -> dict:
     return context
 
 
-def _no_store(response: Response) -> Response:
+def _no_cache(response: Response) -> Response:
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
+    return response
+
+
+def _no_store(response: Response) -> Response:
+    _no_cache(response)
     response.headers["X-Frame-Options"] = "DENY"
     return _apply_security_headers(response)
 
@@ -755,7 +825,7 @@ def _request_port(request: Request) -> int | None:
 
 PUBLIC_PREFIXES = ("/static/",)
 PUBLIC_EXACT_PATHS = {"/", "/display", "/obs", "/qr.png", "/qr-ip.png", "/health", "/api/languages", "/api/language-requests"}
-PUBLIC_WS_PATHS = {"/ws/captions"}
+PUBLIC_WS_PATHS = {"/ws/captions", "/ws/translation-audio"}
 REMOTE_SERVICE_LEADER_PREFIXES = ("/service-leader/", "/download-handoff/", "/download-handoff-qr/", "/static/")
 
 
@@ -817,7 +887,12 @@ def update_capability_state() -> dict:
 def cuda_runtime_capability_state() -> dict:
     global _cuda_runtime_install_state
     system = platform.system()
-    script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
+    if system == "Windows":
+        script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
+    elif system == "Linux":
+        script = PROJECT_ROOT / "install-cuda-runtime-linux.sh"
+    else:
+        script = None
     if _cuda_runtime_install_state.get("status") == "installing" and _cuda_runtime_install_process is not None:
         return_code = _cuda_runtime_install_process.poll()
         if return_code is not None:
@@ -825,14 +900,14 @@ def cuda_runtime_capability_state() -> dict:
                 _cuda_runtime_install_state = {
                     **_cuda_runtime_install_state,
                     "status": "complete",
-                    "message": "CUDA runtime force reinstall finished. Restart Church Cap, then check CUDA again.",
+                    "message": "CUDA runtime installation finished. Restart Church Cap, then check CUDA again.",
                     "return_code": return_code,
                 }
             else:
                 _cuda_runtime_install_state = {
                     **_cuda_runtime_install_state,
                     "status": "error",
-                    "error": f"CUDA runtime force reinstall exited with code {return_code}. Check logs/cuda-runtime-install.log.",
+                    "error": f"CUDA runtime installation exited with code {return_code}. Check logs/cuda-runtime-install.log.",
                     "return_code": return_code,
                 }
     state = {**_cuda_runtime_install_state}
@@ -840,8 +915,8 @@ def cuda_runtime_capability_state() -> dict:
         state["log"] = CUDA_RUNTIME_LOG_LABEL
     return {
         "system": system,
-        "supported": system == "Windows" and script.exists(),
-        "script": script.name if script.exists() else None,
+        "supported": bool(script and script.exists()),
+        "script": script.name if script and script.exists() else None,
         "log": CUDA_RUNTIME_LOG_LABEL,
         "state": state,
     }
@@ -856,9 +931,22 @@ def refreshed_hardware_status() -> dict:
 
 def launch_cuda_runtime_install() -> dict:
     global _cuda_runtime_install_process
-    if platform.system() != "Windows":
-        raise RuntimeError("CUDA runtime install is only available on Windows.")
-    script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
+    system = platform.system()
+    if system == "Windows":
+        script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
+        command = [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+        ]
+    elif system == "Linux":
+        script = PROJECT_ROOT / "install-cuda-runtime-linux.sh"
+        command = ["/usr/bin/env", "bash", str(script)]
+    else:
+        raise RuntimeError("CUDA runtime installation is only available on Windows and Linux.")
     if not script.exists():
         raise RuntimeError("CUDA runtime installer script is missing. Re-download Church Cap and try again.")
     log_dir = PROJECT_ROOT / "logs"
@@ -866,21 +954,14 @@ def launch_cuda_runtime_install() -> dict:
     log_path = log_dir / "cuda-runtime-install.log"
     rotate_log_file(log_path)
     with log_path.open("ab") as log:
-        log.write(b"\n--- Starting CUDA runtime force reinstall from operator page ---\n")
+        log.write(b"\n--- Starting CUDA runtime installation from operator page ---\n")
         creationflags = 0
         if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
             creationflags |= subprocess.CREATE_NEW_PROCESS_GROUP
         if hasattr(subprocess, "DETACHED_PROCESS"):
             creationflags |= subprocess.DETACHED_PROCESS
         process = subprocess.Popen(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(script),
-            ],
+            command,
             cwd=str(PROJECT_ROOT),
             stdin=subprocess.DEVNULL,
             stdout=log,
@@ -1371,6 +1452,7 @@ def diagnostics_payload() -> dict:
         "system_performance": system_performance_snapshot(),
         "runtime_config_sanitized": safe_runtime,
         "translation": translation_diagnostics,
+        "translated_audio": {**translation_speech.diagnostics_state(), "install": tts_install_state()},
         "metrics": safe_metrics,
         "last_service_metrics": get_service_metrics(),
         "service_metrics": get_service_metrics_report(),
@@ -1381,6 +1463,7 @@ def diagnostics_payload() -> dict:
             "update.log": _tail_log(logs_dir / "update.log"),
             "cuda-runtime-install.log": _tail_log(logs_dir / "cuda-runtime-install.log"),
             "translation-install.log": _tail_log(support_logs_dir / "translation-install.log"),
+            "translated-audio-install.log": _tail_log(support_logs_dir / "translated-audio-install.log"),
             "update-restart.log": _tail_log(logs_dir / "update-restart.log"),
         },
         "privacy_note": "Diagnostics are generated only when an operator chooses to download them. They can include OS version, CPU details, memory size, project drive capacity/free space, Python version, performance settings, CUDA/Apple runtime status, privacy-safe numeric service measurements, storage category sizes and cleanup availability, and recent updater/CUDA log lines with local paths redacted. They exclude audio, transcripts, captions, translations, operator passwords, session secrets, and .env contents. Review the file before sharing it for support, and do not post it publicly on GitHub unless you are comfortable with the contents.",
@@ -1454,6 +1537,11 @@ def create_transcriber():
     transcriber_device = performance["whisper_device"]
     if mode == "faster_whisper" and transcriber_device == "mps":
         transcriber_device = "auto"
+    active_context = service_context.active_snapshot()
+    base_initial_prompt = glossary.initial_prompt(settings.whisper_initial_prompt)
+    initial_prompt = base_initial_prompt
+    if active_context and active_context.recognition_assistance_enabled and mode != "faster_whisper":
+        initial_prompt = active_context.initial_prompt
     common = dict(
         model_name=performance["whisper_model"],
         device=transcriber_device,
@@ -1466,7 +1554,7 @@ def create_transcriber():
         stream_silence_finalise_seconds=performance["stream_silence_finalise_seconds"],
         stream_min_rms=settings.stream_min_rms,
         stream_stability_passes=performance["stream_stability_passes"],
-        initial_prompt=settings.whisper_initial_prompt,
+        initial_prompt=initial_prompt,
     )
     if mode in {"whisper", "openai_whisper", "openai-whisper"}:
         from app.transcription.whisper_live import WhisperLiveTranscriber
@@ -1480,6 +1568,11 @@ def create_transcriber():
             edge_guard_seconds=settings.stream_edge_guard_seconds,
             edge_confidence_threshold=settings.stream_edge_confidence_threshold,
             committed_audio_overlap_seconds=settings.stream_committed_audio_overlap_seconds,
+            hotwords=(
+                active_context.hotwords
+                if active_context and active_context.recognition_assistance_enabled
+                else None
+            ),
         )
     raise RuntimeError(
         "Demo/mock captions have been disabled. "
@@ -1498,6 +1591,7 @@ async def transcription_loop():
     _transcriber = None
     runtime = load_runtime_config()
     effective = effective_performance_config(runtime)
+    active_context = service_context.active_snapshot()
     start_service_metrics({
         "app_version": settings.app_version,
         "diagnostics_schema_version": 2,
@@ -1518,6 +1612,13 @@ async def transcription_loop():
         "translation_allowed_languages": sorted(hub.translation_allowed_languages),
         "translation_max_active_languages": hub.translation_max_active_languages,
         "translation_queue_capacity_per_language": hub.translation_queue_capacity_per_language,
+        "service_context_mode": active_context.recognition_mode if active_context else "none",
+        "service_context_hint_count": active_context.included_count if active_context else 0,
+        "service_context_additional_prompt_tokens": (
+            active_context.additional_prompt_token_count if active_context else 0
+        ),
+        "service_context_reference_count": active_context.reference_count if active_context else 0,
+        "service_context_correction_count": active_context.correction_count if active_context else 0,
     })
     # Audience viewers often join before the operator starts captions. Seed the
     # run immediately so peak counts and viewer-seconds include those viewers.
@@ -1530,7 +1631,10 @@ async def transcription_loop():
         async for segment in _transcriber.stream():
             runtime = load_runtime_config()
             filter_enabled = bool(runtime.get("profanity_filter_enabled", True))
-            corrected = profanity_filter.apply(glossary.apply(segment.text), enabled=filter_enabled)
+            context_corrected = service_context.apply_corrections(segment.text)
+            glossary_corrected = glossary.apply(context_corrected)
+            reference_corrected = format_bible_references(glossary_corrected)
+            corrected = profanity_filter.apply(reference_corrected, enabled=filter_enabled)
             raw_text = profanity_filter.apply(segment.raw_text or segment.text, enabled=filter_enabled)
             await hub.publish(
                 CaptionSegment(
@@ -1567,6 +1671,7 @@ async def transcription_loop():
             error=service_status == "error",
             stop_reason="caption_error" if service_status == "error" else "operator_stop",
         )
+        service_context.finish_service()
 
 
 @asynccontextmanager
@@ -1584,6 +1689,7 @@ async def lifespan(app: FastAPI):
             await _transcription_task
         except asyncio.CancelledError:
             pass
+    await translation_speech.shutdown()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -1633,7 +1739,7 @@ async def browser_security_headers(request: Request, call_next):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return template_response(
+    return _no_cache(template_response(
         "captions.html",
         {
             **base_template_context(request),
@@ -1643,27 +1749,27 @@ async def index(request: Request):
             "ui_string_sources": get_client_ui_sources(language["code"] for language in SUPPORTED_LANGUAGES),
             "translation_state": public_translation_state(),
         },
-    )
+    ))
 
 
 @app.get("/display", response_class=HTMLResponse)
 async def display(request: Request):
-    return template_response(
+    return _no_cache(template_response(
         "display.html",
         {"request": request, "church_name": settings.church_name},
-    )
+    ))
 
 
 @app.get("/obs", response_class=HTMLResponse)
 async def obs_overlay(request: Request):
     return_to_operator = request.query_params.get("return") in {"1", "true", "operator"}
-    return template_response(
+    return _no_cache(template_response(
         "obs.html",
         {
             **base_template_context(request),
             "return_to_operator": return_to_operator,
         },
-    )
+    ))
 
 
 @app.get("/obs/help", response_class=HTMLResponse)
@@ -1880,7 +1986,7 @@ async def service_leader_status(request: Request, session: ServiceLeaderSession 
         "current": state.current.text if state.current else "",
         "audio_rms": metrics.get("audio_rms"),
         "audio_peak": metrics.get("audio_peak"),
-        "audio_warning": metrics.get("audio_input_warning"),
+        "audio_warning": metrics.get("audio_input_warning") or metrics.get("audio_recovery_message"),
         "viewers": state.viewers,
         "translation": service_leader_language_context(),
         "audio": service_leader_audio_context(),
@@ -2005,18 +2111,23 @@ async def change_operator_password(
 @app.get("/operator", response_class=HTMLResponse)
 async def operator(request: Request, _: None = Depends(require_operator)):
     runtime = load_runtime_config()
+    system_ip = local_ip()
+    caption_url = f"{base_url(request)}/"
+    caption_ip_url = f"{ip_base_url(request)}/"
+    primary_host = urlsplit(caption_url).hostname or detected_local_hostname()
     return template_response(
         "operator.html",
         {
             **base_template_context(request),
-            "caption_url": f"{base_url(request)}/",
-            "caption_ip_url": f"{ip_base_url(request)}/",
+            "caption_url": caption_url,
+            "caption_ip_url": caption_ip_url,
             "display_url": f"{base_url(request)}/display",
             "display_ip_url": f"{ip_base_url(request)}/display",
             "obs_url": f"{base_url(request)}/obs",
             "obs_ip_url": f"{ip_base_url(request)}/obs",
-            "system_ip": local_ip(),
-            "detected_hostname": detected_local_hostname(),
+            "system_ip": system_ip,
+            "detected_hostname": primary_host,
+            "hostname_configured": bool(settings.public_base_url) or local_hostname_is_configured(),
             "operator_password_is_default": auth_config().needs_setup,
             "session_secret_is_default": False,
             "runtime": runtime,
@@ -2421,8 +2532,10 @@ async def api_status(_: None = Depends(require_operator)):
             "audio_device": selected_audio_device(),
         },
         "translation": translation_state,
+        "translated_audio": {**translation_speech.diagnostics_state(), "install": tts_install_state()},
         "security": security_state(),
         "service_leader_access": service_leader_access.access_state(),
+        "service_context": service_context.public_state(),
         "performance_locked": captions_are_running(),
         "update": update_capability_state(),
         "cuda_runtime": cuda_runtime_capability_state(),
@@ -2585,7 +2698,7 @@ async def install_cuda_runtime(request: Request, _: None = Depends(require_opera
     capability = cuda_runtime_capability_state()
     if not capability["supported"]:
         return JSONResponse(
-            {"status": "error", "error": "CUDA runtime force reinstall is only available on Windows.", "cuda_runtime": capability},
+            {"status": "error", "error": "CUDA runtime installation is only available on Windows and Linux.", "cuda_runtime": capability},
             status_code=400,
         )
     global _cuda_runtime_install_state
@@ -2599,7 +2712,7 @@ async def install_cuda_runtime(request: Request, _: None = Depends(require_opera
     _cuda_runtime_install_state = {"status": "installing", **process}
     return {
         "status": "installing",
-        "message": "CUDA runtime force reinstall started. Restart Church Cap after it finishes, then check CUDA again.",
+        "message": "CUDA runtime installation started. Restart Church Cap after it finishes, then check CUDA again.",
         "cuda_runtime": cuda_runtime_capability_state(),
     }
 
@@ -2713,8 +2826,9 @@ async def start_captions_action() -> dict:
     global _transcription_task
     if _transcription_task and not _transcription_task.done():
         return {"status": "already_running"}
+    service_context.lock_for_service()
     _transcription_task = asyncio.create_task(transcription_loop())
-    return {"status": "started"}
+    return {"status": "started", "service_context": service_context.public_state()}
 
 
 async def stop_captions_action() -> dict:
@@ -2737,9 +2851,105 @@ async def set_sensitive_action(enabled: bool) -> dict:
     return {"status": "sensitive_on" if enabled else "sensitive_off"}
 
 
+def service_context_error_response(exc: ServiceContextError | ServiceContextInputError, status_code: int = 400) -> JSONResponse:
+    return JSONResponse(
+        {"status": "error", "code": exc.code, "error": str(exc), "service_context": service_context.public_state()},
+        status_code=status_code,
+    )
+
+
+@app.get("/api/service-context")
+async def get_service_context(_: None = Depends(require_operator)):
+    return service_context.public_state()
+
+
+@app.post("/api/service-context/analyse")
+async def analyse_service_context(request: Request, _: None = Depends(require_operator)):
+    require_operator_mutation(request)
+    if captions_are_running():
+        return service_context_error_response(
+            ServiceContextError("captions_running", "Prepare service context before starting captions."), 409
+        )
+    try:
+        content_type = request.headers.get("content-type", "").lower()
+        source_summary = "Pasted service notes"
+        if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+            form = await request.form()
+            upload = form.get("file")
+            pasted = str(form.get("notes") or "")
+            if upload is not None and hasattr(upload, "read") and getattr(upload, "filename", ""):
+                data = await upload.read(MAX_UPLOAD_BYTES + 1)
+                notes = decode_uploaded_notes(data, str(upload.filename))
+                source_summary = "Uploaded plain-text service notes"
+            else:
+                notes = pasted
+        else:
+            payload = await request.json()
+            notes = str(payload.get("notes") or "") if isinstance(payload, dict) else ""
+        normalised = normalise_notes(notes)
+        # Extraction runs away from the event loop. The normalised source is
+        # scoped to this request and is not stored by ServiceContextManager.
+        return await asyncio.to_thread(service_context.analyse, normalised, source_summary=source_summary)
+    except ServiceContextInputError as exc:
+        return service_context_error_response(exc)
+    except ServiceContextError as exc:
+        return service_context_error_response(exc, 409)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return service_context_error_response(
+            ServiceContextInputError("invalid_request", "The service notes request could not be read.")
+        )
+
+
+@app.post("/api/service-context/cancel")
+async def cancel_service_context(request: Request, _: None = Depends(require_operator)):
+    require_operator_mutation(request)
+    return service_context.cancel_analysis()
+
+
+@app.post("/api/service-context/approve")
+async def approve_service_context(request: Request, _: None = Depends(require_operator)):
+    require_operator_mutation(request)
+    if captions_are_running():
+        return service_context_error_response(
+            ServiceContextError("captions_running", "Stop captions before changing service context."), 409
+        )
+    try:
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            raise ServiceContextError("invalid_review", "The reviewed service context was invalid.")
+        return service_context.approve(payload, base_prompt=glossary.initial_prompt(settings.whisper_initial_prompt))
+    except ServiceContextError as exc:
+        return service_context_error_response(exc, 409 if exc.code == "captions_running" else 400)
+
+
+@app.post("/api/service-context/rearm")
+async def rearm_service_context(request: Request, _: None = Depends(require_operator)):
+    require_operator_mutation(request)
+    if captions_are_running():
+        return service_context_error_response(
+            ServiceContextError("captions_running", "Stop captions before re-arming service context."), 409
+        )
+    try:
+        return service_context.rearm(base_prompt=glossary.initial_prompt(settings.whisper_initial_prompt))
+    except ServiceContextError as exc:
+        return service_context_error_response(exc)
+
+
+@app.delete("/api/service-context")
+async def clear_service_context(request: Request, _: None = Depends(require_operator)):
+    require_operator_mutation(request)
+    try:
+        return service_context.clear()
+    except ServiceContextError as exc:
+        return service_context_error_response(exc, 409)
+
+
 @app.post("/api/start")
-async def start(_: None = Depends(require_operator)):
-    return await start_captions_action()
+async def start(request: Request, _: None = Depends(require_operator)):
+    try:
+        return await start_captions_action()
+    except ServiceContextError as exc:
+        return JSONResponse({"status": "error", "code": exc.code, "error": str(exc)}, status_code=409)
 
 
 @app.post("/api/stop")
@@ -2750,7 +2960,10 @@ async def stop(_: None = Depends(require_operator)):
 @app.post("/service-leader/api/start")
 async def service_leader_start(request: Request, session: ServiceLeaderSession = Depends(require_service_leader)):
     require_service_leader_mutation(request, session)
-    return await start_captions_action()
+    try:
+        return await start_captions_action()
+    except ServiceContextError as exc:
+        return JSONResponse({"status": "error", "code": exc.code, "error": str(exc)}, status_code=409)
 
 
 @app.post("/service-leader/api/stop")
@@ -2992,6 +3205,15 @@ async def update_profanity_filter(request: Request, _: None = Depends(require_op
     return {"status": "saved", "profanity_filter_enabled": bool(cfg["profanity_filter_enabled"])}
 
 
+@app.post("/api/translated-audio/settings")
+async def update_translated_audio_settings(request: Request, _: None = Depends(require_operator)):
+    body = await request.json()
+    cfg = set_translated_audio_config(bool(body.get("enabled")))
+    translation_speech.set_operator_enabled(bool(cfg["translated_audio_enabled"]))
+    await hub.broadcast_viewer_meta()
+    return {"status": "saved", "translated_audio": translation_speech.diagnostics_state()}
+
+
 @app.post("/api/translation")
 async def update_translation(request: Request, _: None = Depends(require_operator)):
     body = await request.json()
@@ -3034,7 +3256,7 @@ async def update_translation(request: Request, _: None = Depends(require_operato
 
 @app.get("/api/translation/status")
 async def translation_status(_: None = Depends(require_operator)):
-    return {**safe_translation_state(), "install": _translation_install_state}
+    return {**safe_translation_state(), "install": translation_install_state()}
 
 
 @app.post("/api/language-requests")
@@ -3153,15 +3375,228 @@ def translation_install_script(kind: str) -> list[str]:
 def translation_install_state() -> dict:
     global _translation_install_state
     if _translation_install_process is not None and _translation_install_state.get("status") == "installing":
+        progress = _current_installer_progress("translation", _translation_install_state.get("progress"))
+        _translation_install_state = {**_translation_install_state, "progress": progress}
         code = _translation_install_process.poll()
         if code is not None:
+            kind = str(_translation_install_state.get("kind") or "")
+            success_message = (
+                "Recommended language bundle installed, including Tigrinya. Select the languages needed for this service and save."
+                if kind == "ct2small100"
+                else "Translation install finished."
+            )
             _translation_install_state = {
                 **_translation_install_state,
                 "status": "complete" if code == 0 else "error",
                 "returncode": code,
-                "message": "Translation install finished." if code == 0 else "Translation install failed. Check logs/translation-install.log.",
+                "message": success_message if code == 0 else f"Translation install failed. Check {TRANSLATION_INSTALL_LOG_LABEL}.",
+                "progress": _finished_installer_progress(
+                    progress,
+                    success=code == 0,
+                    detail=success_message if code == 0 else "Installation stopped before all resources were ready.",
+                ),
             }
     return _translation_install_state
+
+
+def tts_install_script(package_ids: tuple[str, ...]) -> list[str]:
+    selected = ",".join(package_ids)
+    if platform.system() == "Windows":
+        return [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(PROJECT_ROOT / "scripts" / "install-tts.ps1"),
+            "-Packages",
+            selected,
+        ]
+    return ["bash", str(PROJECT_ROOT / "scripts" / "install-tts.sh"), "--packages", selected]
+
+
+def _voice_package_languages(package_ids: tuple[str, ...]) -> set[str]:
+    return {
+        language
+        for package_id in package_ids
+        for language in VOICE_PACKAGES[package_id]["caption_languages"]
+    }
+
+
+def _voice_download_label(package_ids: tuple[str, ...]) -> str:
+    total = sum(int(VOICE_PACKAGES[package_id]["download_bytes"]) for package_id in package_ids)
+    return f"about {total / 1_000_000:.0f} MB"
+
+
+def tts_install_state() -> dict:
+    global _tts_install_state
+    if _tts_install_process is not None and _tts_install_state.get("status") == "installing":
+        progress = _current_installer_progress("tts", _tts_install_state.get("progress"))
+        _tts_install_state = {**_tts_install_state, "progress": progress}
+        code = _tts_install_process.poll()
+        if code is not None:
+            importlib.invalidate_caches()
+            translation_speech.reload_manifest()
+            diagnostics = translation_speech.diagnostics_state()
+            package_ids = tuple(_tts_install_state.get("package_ids") or ())
+            expected_languages = _voice_package_languages(package_ids) if package_ids else set()
+            configured_languages = set(diagnostics.get("configured_voices") or {})
+            ready = diagnostics.get("runtime_available") is True and expected_languages.issubset(configured_languages)
+            language_count = len(expected_languages)
+            _tts_install_state = {
+                **_tts_install_state,
+                "status": "complete" if code == 0 and ready else "error",
+                "returncode": code,
+                "message": (
+                    f"Spoken audio is ready for {language_count} translated caption language{'s' if language_count != 1 else ''}."
+                    if code == 0 and ready
+                    else "Translated-audio installation did not finish successfully. Check logs/translated-audio-install.log."
+                ),
+                "progress": _finished_installer_progress(
+                    progress,
+                    success=code == 0 and ready,
+                    detail=(
+                        "All selected spoken-language packs are ready."
+                        if code == 0 and ready
+                        else "Installation stopped before all selected voice packs were ready."
+                    ),
+                ),
+            }
+    return {**_tts_install_state, "catalog": public_voice_catalog()}
+
+
+@app.post("/api/translated-audio/install")
+async def install_translated_audio(request: Request, __: None = Depends(require_operator)):
+    global _tts_install_process, _tts_install_state
+    if captions_are_running():
+        return JSONResponse(
+            {
+                "status": "error",
+                "error": "Stop captions before installing translated audio. Installation downloads and prepares local AI voices and could affect a live service.",
+            },
+            status_code=409,
+        )
+    state = tts_install_state()
+    if state.get("status") == "installing":
+        return {"status": "installing", "message": "Translated-audio installation is already running.", "install": state}
+    if not (PROJECT_ROOT / ".venv").exists():
+        return JSONResponse(
+            {"status": "error", "error": "No local .venv was found. Run Church Cap setup first, then return to Languages."},
+            status_code=400,
+        )
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    requested = body.get("packages") if isinstance(body, dict) else None
+    if requested is None:
+        package_ids = ALL_VOICE_PACKAGE_IDS
+    elif not isinstance(requested, list) or len(requested) > len(ALL_VOICE_PACKAGE_IDS):
+        return JSONResponse({"status": "error", "error": "Select valid spoken-language packages."}, status_code=400)
+    else:
+        try:
+            package_ids = normalise_voice_package_selection(requested)
+        except ValueError as exc:
+            return JSONResponse({"status": "error", "error": str(exc)}, status_code=400)
+    command = tts_install_script(package_ids)
+    script_path = PROJECT_ROOT / "scripts" / ("install-tts.ps1" if platform.system() == "Windows" else "install-tts.sh")
+    if not script_path.exists():
+        return JSONResponse({"status": "error", "error": "The translated-audio installer script was not found."}, status_code=500)
+    logs_dir = app_support_dir() / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / "translated-audio-install.log"
+    rotate_log_file(log_path)
+    progress_items = [
+        {"id": package_id, "label": str(VOICE_PACKAGES[package_id]["label"]), "state": "pending", "percent": 0}
+        for package_id in package_ids
+    ]
+    initial_progress = _initialise_installer_progress(
+        "tts",
+        detail=f"Preparing {len(package_ids)} selected spoken-language pack{'s' if len(package_ids) != 1 else ''}.",
+        items=progress_items,
+    )
+    try:
+        with log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(f"\n[{datetime.now(timezone.utc).isoformat()}] Starting optional spoken-language install: {','.join(package_ids)}\n")
+            log_file.flush()
+            process_environment = os.environ.copy()
+            process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("tts"))
+            process_environment["PYTHONUNBUFFERED"] = "1"
+            _tts_install_process = subprocess.Popen(
+                command,
+                cwd=str(PROJECT_ROOT),
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                env=process_environment,
+            )
+    except Exception as exc:
+        _tts_install_state = {"status": "error", "error": str(exc), "log": TTS_INSTALL_LOG_LABEL}
+        return JSONResponse({"status": "error", "error": str(exc)}, status_code=500)
+    _tts_install_state = {
+        "status": "installing",
+        "log": TTS_INSTALL_LOG_LABEL,
+        "package_ids": list(package_ids),
+        "caption_languages": sorted(_voice_package_languages(package_ids)),
+        "progress": initial_progress,
+    }
+    return {
+        "status": "installing",
+        "message": f"Installing {len(package_ids)} optional spoken-language packs ({_voice_download_label(package_ids)}). Internet is needed and this may take several minutes.",
+        "install": tts_install_state(),
+    }
+
+
+@app.post("/api/translated-audio/uninstall")
+async def uninstall_translated_audio(request: Request, __: None = Depends(require_operator)):
+    global _tts_install_state
+    if captions_are_running():
+        return JSONResponse(
+            {
+                "status": "error",
+                "error": "Stop captions before removing spoken-language models. Removing a voice during a live service could interrupt listeners.",
+            },
+            status_code=409,
+        )
+    if tts_install_state().get("status") == "installing":
+        return JSONResponse(
+            {"status": "error", "error": "Wait for the current spoken-language installation to finish before removing models."},
+            status_code=409,
+        )
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict) or body.get("confirmed") is not True:
+        return JSONResponse(
+            {"status": "error", "error": "Confirm which installed spoken-language models should be removed."},
+            status_code=400,
+        )
+    requested = body.get("packages")
+    if not isinstance(requested, list) or len(requested) > len(ALL_VOICE_PACKAGE_IDS):
+        return JSONResponse({"status": "error", "error": "Select valid installed spoken-language models."}, status_code=400)
+    try:
+        package_ids = normalise_voice_package_selection(requested)
+        result = await asyncio.to_thread(
+            uninstall_reviewed_voice_packages,
+            translation_speech.manifest_path,
+            package_ids,
+        )
+    except (OSError, ValueError) as exc:
+        return JSONResponse({"status": "error", "error": str(exc)}, status_code=409)
+    translation_speech.reload_manifest()
+    _tts_install_state = {"status": "idle"}
+    try:
+        clear_install_progress(_installer_progress_path("tts"))
+    except OSError:
+        pass
+    await hub.broadcast_viewer_meta()
+    removed_count = len(result["removed_package_ids"])
+    return {
+        "status": "removed",
+        "message": f"Removed {removed_count} spoken-language model pack{'s' if removed_count != 1 else ''}. They can be downloaded again later.",
+        **result,
+        "translated_audio": translation_speech.diagnostics_state(),
+        "install": tts_install_state(),
+    }
 
 
 @app.post("/api/translation/install")
@@ -3197,17 +3632,35 @@ async def install_translation_resources(request: Request, _: None = Depends(requ
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_path = logs_dir / "translation-install.log"
     rotate_log_file(log_path)
+    initial_progress = _initialise_installer_progress(
+        "translation",
+        detail="Preparing the selected translation package.",
+    )
     try:
         log_file = log_path.open("a", encoding="utf-8")
         log_file.write(f"\n[{datetime.now(timezone.utc).isoformat()}] Starting {kind} translation install\n")
         log_file.flush()
-        _translation_install_process = subprocess.Popen(command, cwd=str(PROJECT_ROOT), stdout=log_file, stderr=subprocess.STDOUT)
+        process_environment = os.environ.copy()
+        process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("translation"))
+        process_environment["PYTHONUNBUFFERED"] = "1"
+        _translation_install_process = subprocess.Popen(
+            command,
+            cwd=str(PROJECT_ROOT),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            env=process_environment,
+        )
     except Exception as exc:
         _translation_install_state = {"status": "error", "error": str(exc), "log": TRANSLATION_INSTALL_LOG_LABEL}
         return JSONResponse({"status": "error", "error": str(exc)}, status_code=500)
-    _translation_install_state = {"status": "installing", "kind": kind, "log": TRANSLATION_INSTALL_LOG_LABEL}
+    _translation_install_state = {
+        "status": "installing",
+        "kind": kind,
+        "log": TRANSLATION_INSTALL_LOG_LABEL,
+        "progress": initial_progress,
+    }
     install_messages = {
-        "ct2small100": "Installing the Recommended package / CTranslate2 INT8 SMaLL-100. Allow about 2 GB of temporary free space while the roughly 1.2 GB source download is converted.",
+        "ct2small100": "Installing the Recommended language bundle.",
         "small100": "Installing the Compatibility package / PyTorch SMaLL-100. Its model download is approximately 1.2 GB.",
         "argos": "Installing common Base package / Argos Translate language packs.",
         "argos_all": "Installing all available Base package / Argos Translate language packs. Total storage varies and can reach several GB.",
@@ -3243,7 +3696,8 @@ async def client_ui(language: str):
 @app.post("/api/test-caption")
 async def test_caption(_: None = Depends(require_operator)):
     filter_enabled = bool(load_runtime_config().get("profanity_filter_enabled", True))
-    text = profanity_filter.apply(glossary.apply("Please turn with me to Efficiency chapter two and listen to the Word of God."), enabled=filter_enabled)
+    text = glossary.apply("Please turn with me to Efficiency chapter two and listen to the Word of God.")
+    text = profanity_filter.apply(format_bible_references(text), enabled=filter_enabled)
     await hub.publish(CaptionSegment(text=text, raw_text=text, is_final=True))
     return {"status": "sent", "text": text}
 
@@ -3260,3 +3714,17 @@ async def ws_captions(websocket: WebSocket):
         await hub.disconnect(websocket)
     except Exception:
         await hub.disconnect(websocket)
+
+
+@app.websocket("/ws/translation-audio")
+async def ws_translation_audio(websocket: WebSocket):
+    """Opt-in audio channel kept separate from the proven caption stream."""
+    language = normalise_language(websocket.query_params.get("lang"))
+    await translation_speech.connect(websocket, language)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        await translation_speech.disconnect(websocket)
+    except Exception:
+        await translation_speech.disconnect(websocket)

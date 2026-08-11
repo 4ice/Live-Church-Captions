@@ -6,7 +6,7 @@
   <meta name="church-cap-csrf-token" content="{{ csrf_token }}">
   <title>Church Cap · Operator</title>
   <link rel="icon" type="image/png" href="/static/branding/church-cap-square-dark.png">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=0.7.6-ui-3">
 </head>
 <body class="operator-page glass-page{% if deployment.capabilities.simple_operator %} appliance-simple-operator{% endif %}" data-deployment-profile="{{ deployment.capabilities.profile }}" data-appliance="{{ 'true' if deployment.capabilities.is_appliance else 'false' }}">
   <script>
@@ -54,23 +54,71 @@
       </div>
 
       <nav class="operator-nav premium-nav">
-        <p class="nav-category">Run service</p>
-        <button type="button" class="nav-button active" data-section="dashboard"><span class="nav-icon nav-icon-dashboard" aria-hidden="true"></span><span class="nav-label">Dashboard</span></button>
+        <p class="nav-category">Main menu</p>
+        <div class="nav-menu-group expanded" data-nav-group="dashboard">
+          <button type="button" class="nav-button nav-parent-button active" data-menu-category="dashboard" aria-expanded="true" aria-controls="nav-submenu-dashboard"><span class="nav-icon nav-icon-dashboard" aria-hidden="true"></span><span class="nav-label">Dashboard</span><span class="nav-chevron" aria-hidden="true"></span></button>
+          <div class="nav-submenu" id="nav-submenu-dashboard">
+            <div class="nav-submenu-inner">
+              <button type="button" class="nav-submenu-button active" data-section="dashboard" data-subsection="live-service" data-description="Start captions, choose the audio input, monitor the microphone, and manage sensitive moments.">Live Service</button>
+              <button type="button" class="nav-submenu-button service-context-nav-button" data-section="dashboard" data-subsection="service-context" data-label="Service Context" data-description="Optionally prepare sermon terms and Bible references before the service to help caption accuracy."><span>Service Context</span><span class="service-context-nav-tags"><span class="beta-pill mini">Beta</span><span class="optional-nav-label">Optional</span></span></button>
+              <button type="button" class="nav-submenu-button" data-section="dashboard" data-subsection="performance" data-description="Tune caption speed and accuracy, check hardware acceleration, and measure live performance.">Performance</button>
+            </div>
+          </div>
+        </div>
         <button type="button" class="nav-button" data-section="service-leader"><span class="nav-icon nav-icon-service" aria-hidden="true"></span><span class="nav-label">Service Leader</span></button>
-        <button type="button" class="nav-button" data-section="languages" {% if not deployment.capabilities.show_translation_setup %}hidden{% endif %}><span class="nav-icon nav-icon-languages" aria-hidden="true"></span><span class="nav-label">Languages</span><span class="beta-pill mini">Beta</span></button>
-        <button type="button" class="nav-button" data-section="audience"><span class="nav-icon nav-icon-audience" aria-hidden="true"></span><span class="nav-label">Audience & OBS</span></button>
-        <button type="button" class="nav-button" data-section="privacy"><span class="nav-icon nav-icon-privacy" aria-hidden="true"></span><span class="nav-label">Privacy & Security</span></button>
-
-        <p class="nav-category">Guides</p>
-        <a class="nav-button nav-link" href="/setup/network"><span class="nav-icon nav-icon-network" aria-hidden="true"></span><span class="nav-label">Network setup</span></a>
-        <a class="nav-button nav-link" href="/obs/help"><span class="nav-icon nav-icon-obs" aria-hidden="true"></span><span class="nav-label">OBS setup</span></a>
-        <a class="nav-button nav-link" href="/docs/privacy"><span class="nav-icon nav-icon-doc-privacy" aria-hidden="true"></span><span class="nav-label">Privacy statement</span></a>
-        <a class="nav-button nav-link" href="/docs/church-notice"><span class="nav-icon nav-icon-notice" aria-hidden="true"></span><span class="nav-label">Church notice text</span></a>
-        <a class="nav-button nav-link" href="/docs/disclaimer"><span class="nav-icon nav-icon-disclaimer" aria-hidden="true"></span><span class="nav-label">Disclaimers</span></a>
-        <a class="nav-button nav-link" href="/feedback"><span class="nav-icon nav-icon-feedback" aria-hidden="true"></span><span class="nav-label">Feedback</span></a>
-
-        <p class="nav-category">System</p>
-        <button type="button" class="nav-button" data-section="diagnostics"><span class="nav-icon nav-icon-diagnostics" aria-hidden="true"></span><span class="nav-label">Diagnostics</span></button>
+        <div class="nav-menu-group" data-nav-group="languages" {% if not deployment.capabilities.show_translation_setup %}hidden{% endif %}>
+          <button type="button" class="nav-button nav-parent-button" data-menu-category="languages" aria-expanded="false" aria-controls="nav-submenu-languages"><span class="nav-icon nav-icon-languages" aria-hidden="true"></span><span class="nav-label">Languages</span><span class="beta-pill mini">Beta</span><span class="nav-chevron" aria-hidden="true"></span></button>
+          <div class="nav-submenu" id="nav-submenu-languages">
+            <div class="nav-submenu-inner">
+              <button type="button" class="nav-submenu-button" data-section="languages" data-subsection="multilingual-captions" data-description="Enable local translated captions and manage the active-language capacity for your audience.">Multilingual Captions</button>
+              <button type="button" class="nav-submenu-button" data-section="languages" data-subsection="advanced-language-controls" data-description="Control language availability, visitor requests, priority, and translation timing.">Advanced Language Controls</button>
+              <button type="button" class="nav-submenu-button" data-section="languages" data-subsection="spoken-translated-audio" data-description="Install optional local voices so visitors can listen to translated captions through headphones.">Spoken Translated Audio</button>
+            </div>
+          </div>
+        </div>
+        <div class="nav-menu-group" data-nav-group="audience">
+          <button type="button" class="nav-button nav-parent-button" data-menu-category="audience" aria-expanded="false" aria-controls="nav-submenu-audience">
+            <span class="nav-icon nav-icon-congregation" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <g opacity="0.82">
+                  <circle cx="4.7" cy="9.2" r="2.05"></circle>
+                  <path d="M0.8 19.5c0.08-2.7 1.7-4.72 4.08-5.22 0.92-0.2 1.82-0.08 2.62 0.3"></path>
+                  <circle cx="19.3" cy="9.2" r="2.05"></circle>
+                  <path d="M16.5 14.58c0.8-0.38 1.7-0.5 2.62-0.3 2.38 0.5 4 2.52 4.08 5.22"></path>
+                </g>
+                <circle cx="12" cy="7" r="2.8"></circle>
+                <path d="M6.2 20.25C6.2 16.7 8.78 14 12 14s5.8 2.7 5.8 6.25"></path>
+              </svg>
+            </span>
+            <span class="nav-label">Congregation</span><span class="nav-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="nav-submenu" id="nav-submenu-audience">
+            <div class="nav-submenu-inner">
+              <button type="button" class="nav-submenu-button" data-section="audience" data-subsection="room-access" data-description="Help congregation members join live captions by scanning a QR code or opening a local link.">Join Live Captions</button>
+              <button type="button" class="nav-submenu-button" data-section="audience" data-subsection="room-display" data-description="Open large captions for a projector, confidence screen, or display capture.">Room Display</button>
+              <button type="button" class="nav-submenu-button" data-section="audience" data-subsection="obs-live-stream" data-description="Add transparent lower-third captions to OBS, vMix, or another livestream tool.">OBS Live Stream</button>
+            </div>
+          </div>
+        </div>
+        <div class="nav-menu-group" data-nav-group="privacy">
+          <button type="button" class="nav-button nav-parent-button" data-menu-category="privacy" aria-expanded="false" aria-controls="nav-submenu-privacy"><span class="nav-icon nav-icon-privacy" aria-hidden="true"></span><span class="nav-label">Privacy &amp; Security</span><span class="nav-chevron" aria-hidden="true"></span></button>
+          <div class="nav-submenu" id="nav-submenu-privacy">
+            <div class="nav-submenu-inner">
+              <button type="button" class="nav-submenu-button" data-section="privacy" data-subsection="security" data-description="Review local viewer, operator, and paired-device access settings.">Security</button>
+              <button type="button" class="nav-submenu-button" data-section="privacy" data-subsection="transcript-controls" data-description="Manage transcript saving, retention, deletion, and exports.">Transcript Controls</button>
+              <button type="button" class="nav-submenu-button" data-section="privacy" data-subsection="guidance" data-description="Review church guidance, privacy notices, and caption safety settings.">Guidance and Caption Safety</button>
+            </div>
+          </div>
+        </div>
+        <div class="nav-menu-group" data-nav-group="diagnostics">
+          <button type="button" class="nav-button nav-parent-button" data-menu-category="diagnostics" aria-expanded="false" aria-controls="nav-submenu-diagnostics"><span class="nav-icon nav-icon-diagnostics" aria-hidden="true"></span><span class="nav-label">Diagnostics</span><span class="nav-chevron" aria-hidden="true"></span></button>
+          <div class="nav-submenu" id="nav-submenu-diagnostics">
+            <div class="nav-submenu-inner">
+              <button type="button" class="nav-submenu-button" data-section="diagnostics" data-subsection="support" data-description="Download privacy-aware reports for troubleshooting and recorded-service comparisons.">Support</button>
+              <button type="button" class="nav-submenu-button" data-section="diagnostics" data-subsection="application-storage" data-description="Review local application storage, AI downloads, voice models, and safe cleanup options.">Application Storage</button>
+            </div>
+          </div>
+        </div>
         <button type="button" class="nav-button" data-section="updates"><span class="nav-icon nav-icon-updates" aria-hidden="true"></span><span class="nav-label">Updates</span></button>
       </nav>
 
@@ -87,7 +135,7 @@
     <section class="operator-main-panel premium-main-panel">
       <header class="operator-header-row compact-operator-header glass-card premium-header-card">
         <div class="operator-header-copy">
-          <p class="eyebrow" id="operatorSectionEyebrow">Dashboard</p>
+          <p class="eyebrow" id="operatorSectionEyebrow">Dashboard · Live Service</p>
           <h1>Church Cap operator</h1>
           <p class="muted" id="operatorSectionDescription">Start captions, choose audio input, monitor the microphone, and manage sensitive moments.</p>
         </div>
@@ -118,7 +166,7 @@
 
       <section class="operator-section active" id="operator-section-dashboard" data-title="Dashboard" data-description="Start captions, choose audio input, monitor the microphone, and manage sensitive moments.">
         <div class="dashboard-grid">
-          <article class="operator-panel glass-card dashboard-hero-card">
+          <article class="operator-panel glass-card dashboard-hero-card operator-subpage-item subpage-visible" data-subpage="live-service">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Live service</p>
@@ -133,9 +181,13 @@
             </div>
             <p id="captionStartNotice" class="operator-start-notice" aria-live="polite"></p>
             <p id="apiResult" class="muted small-result"></p>
+            <div class="pre-service-context-link" id="preServiceContextLink">
+              <span><strong>Before the service <span class="beta-pill mini">Beta</span> <span class="optional-nav-label">Optional</span></strong><small>Add sermon terms and Bible references if useful.</small></span>
+              <button type="button" class="secondary-button" onclick="showOperatorSection('dashboard', 'service-context')">Prepare context</button>
+            </div>
           </article>
 
-          <article class="operator-panel glass-card sensitive-panel premium-sensitive-panel">
+          <article class="operator-panel glass-card sensitive-panel premium-sensitive-panel operator-subpage-item subpage-visible" data-subpage="live-service">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Pastoral care</p>
@@ -149,7 +201,7 @@
             </div>
           </article>
 
-          <article class="operator-panel glass-card wide-card">
+          <article class="operator-panel glass-card wide-card operator-subpage-item subpage-visible" data-subpage="live-service">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Audio input</p>
@@ -173,7 +225,7 @@
             <p id="audioResult" class="muted small-result"></p>
           </article>
 
-          <article class="operator-panel glass-card meter-card">
+          <article class="operator-panel glass-card meter-card operator-subpage-item subpage-visible" data-subpage="live-service">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Monitor</p>
@@ -189,7 +241,7 @@
             </dl>
           </article>
 
-          <article class="operator-panel glass-card english-caption-card wide-card">
+          <article class="operator-panel glass-card english-caption-card wide-card operator-subpage-item subpage-visible" data-subpage="live-service">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Source captions</p>
@@ -200,7 +252,98 @@
             <div id="currentCaption" class="operator-caption premium-caption-preview">Waiting for captions…</div>
           </article>
 
-          <article class="operator-panel glass-card live-performance-tile meter-card">
+          <article class="operator-panel glass-card full-dashboard-card service-context-card operator-subpage-item" data-subpage="service-context">
+            <div class="service-context-intro">
+              <div>
+                <p class="eyebrow">Before the service · optional <span class="beta-pill mini">Beta</span></p>
+                <div class="service-context-title-row">
+                  <h2>Prepare service context</h2>
+                  <button type="button" class="service-context-info-button" onclick="showServiceContextInformation()" aria-label="More information about Service Context performance" aria-haspopup="dialog">i</button>
+                </div>
+                <p class="muted">Paste sermon notes or choose a plain-text notes file. Church Cap will locally rank a small set of distinctive names and terms for you to review before captions begin.</p>
+              </div>
+              <span class="status-pill" id="serviceContextStatus">Not prepared</span>
+            </div>
+            <div class="service-context-privacy-note">
+              <strong>Notes stay on this device.</strong>
+              <span>The original notes are discarded after analysis. They are not used as a script or teleprompter—the microphone remains the source of every caption. Bible-reference formatting works automatically, even when you do not provide notes.</span>
+            </div>
+
+            <div id="serviceContextInputState" class="service-context-state">
+              <label for="serviceContextNotes">Paste service or sermon notes</label>
+              <textarea id="serviceContextNotes" rows="10" maxlength="100000" placeholder="Paste an outline, full sermon script, names, places, themes, and Bible readings…"></textarea>
+              <div class="service-context-file-row">
+                <div>
+                  <label for="serviceContextFile">Or choose a notes file</label>
+                  <input id="serviceContextFile" type="file" accept=".txt,.md,text/plain,text/markdown">
+                  <small class="muted">UTF-8 .txt or .md, up to 512 KiB.</small>
+                </div>
+                <button type="button" id="serviceContextAnalyseButton" onclick="analyseServiceContext()">Analyse notes locally</button>
+              </div>
+            </div>
+
+            <div id="serviceContextProcessingState" class="service-context-state" hidden aria-live="polite">
+              <div class="service-context-processing-indicator" aria-hidden="true"></div>
+              <div><strong>Finding useful caption context…</strong><p class="muted">This normally takes only a moment. No cloud service is used.</p></div>
+              <button type="button" class="secondary-button" onclick="cancelServiceContextAnalysis()">Cancel</button>
+            </div>
+
+            <div id="serviceContextReviewState" class="service-context-state" hidden>
+              <div class="panel-heading-row">
+                <div><p class="eyebrow">Review</p><h3>Review suggestions and corrections</h3></div>
+                <span class="status-pill" id="serviceContextSourceSummary">Notes analysed</span>
+              </div>
+              <p class="muted">The safe default leaves Whisper unchanged and applies only your temporary corrections after recognition. Bible-reference formatting remains automatic.</p>
+              <section class="service-context-review-section">
+                <div class="service-context-review-heading"><h4>Difficult names and terms</h4><span id="serviceContextTermCount" class="muted"></span></div>
+                <label class="service-context-experimental-toggle" for="serviceContextRecognitionAssist">
+                  <input id="serviceContextRecognitionAssist" type="checkbox" onchange="toggleServiceContextRecognitionAssist(this.checked)">
+                  <span><strong>Experimental recognition assistance</strong><small>Off by default. When enabled, up to two selected terms are sent directly to Whisper and may increase delay or unstable wording.</small></span>
+                  <span class="beta-pill mini">Experimental</span>
+                </label>
+                <p class="muted small-result" id="serviceContextRecognitionAssistHelp">Suggestions are not currently changing recognition. Use temporary corrections below after a short rehearsal.</p>
+                <div id="serviceContextTerms" class="service-context-chip-list"></div>
+                <div class="service-context-add-row">
+                  <input id="serviceContextManualTerm" maxlength="80" placeholder="Add a name or term">
+                  <button type="button" class="secondary-button" onclick="addServiceContextTerm()">Add term</button>
+                </div>
+              </section>
+              <section class="service-context-review-section">
+                <div class="service-context-review-heading"><h4>Bible references</h4><span id="serviceContextReferenceCount" class="muted"></span></div>
+                <p class="muted small-result">Shown for review only. References are formatted after recognition and do not fill Whisper's prompt in the safe default mode.</p>
+                <div id="serviceContextReferences" class="service-context-chip-list"></div>
+              </section>
+              <section class="service-context-review-section">
+                <div class="service-context-review-heading"><h4>Optional caption corrections</h4><span class="muted">Maximum 40</span></div>
+                <p class="muted small-result">Use these after a short rehearsal if Whisper consistently mishears a name. Corrections are prepared once, applied locally after recognition, and removed after the service.</p>
+                <div id="serviceContextCorrections" class="service-context-corrections"></div>
+                <button type="button" class="secondary-button" onclick="addServiceContextCorrection()">Add correction</button>
+              </section>
+              <div class="button-row spacious-actions">
+                <button type="button" id="serviceContextApproveButton" onclick="approveServiceContext()">Use for this service</button>
+                <button type="button" class="secondary-button" onclick="resetServiceContextInput()">Choose different notes</button>
+                <button type="button" class="secondary-button" onclick="clearServiceContext()">Clear</button>
+              </div>
+            </div>
+
+            <div id="serviceContextReadyState" class="service-context-state" hidden>
+              <div class="service-context-ready-mark" aria-hidden="true">✓</div>
+              <div>
+                <p class="eyebrow" id="serviceContextReadyEyebrow">Ready for this service</p>
+                <h3 id="serviceContextReadyTitle">Service context is prepared</h3>
+                <p class="muted" id="serviceContextReadySummary"></p>
+                <p class="service-context-lifecycle-copy" id="serviceContextLifecycleCopy">It will lock when captions start and automatically become inactive when captions stop.</p>
+              </div>
+              <div class="button-stack-inline service-context-ready-actions">
+                <button type="button" id="serviceContextRearmButton" onclick="rearmServiceContext()" hidden>Re-arm for another service</button>
+                <button type="button" id="serviceContextEditButton" class="secondary-button" onclick="editServiceContextReview()">Review</button>
+                <button type="button" id="serviceContextClearButton" class="secondary-button" onclick="clearServiceContext()">Clear</button>
+              </div>
+            </div>
+            <p id="serviceContextResult" class="operator-start-notice" aria-live="polite"></p>
+          </article>
+
+          <article class="operator-panel glass-card live-performance-tile meter-card operator-subpage-item" data-subpage="performance">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Performance</p>
@@ -216,11 +359,11 @@
             {% if deployment.capabilities.simple_operator %}
             <p class="muted small-result">{{ deployment.capabilities.message }}</p>
             {% else %}
-            <p class="muted small-result">Use the Performance panel below to tune speed, accuracy, GPU use, and benchmark results.</p>
+            <p class="muted small-result">Tune speed, accuracy, GPU use, and benchmark results alongside the live status below.</p>
             {% endif %}
           </article>
 
-          <article class="operator-panel glass-card performance-card full-dashboard-card">
+          <article class="operator-panel glass-card performance-card full-dashboard-card operator-subpage-item" data-subpage="performance">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Performance</p>
@@ -329,17 +472,17 @@
             <dl id="cudaStatusGrid" class="cuda-status-grid" hidden>
               <div><dt>NVIDIA driver</dt><dd id="cudaDriverStatus">Unknown</dd></div>
               <div><dt>CTranslate2 CUDA</dt><dd id="cudaCtranslateStatus">Unknown</dd></div>
-              <div><dt>Runtime DLLs</dt><dd id="cudaRuntimeStatus">Unknown</dd></div>
+              <div><dt>Runtime libraries</dt><dd id="cudaRuntimeStatus">Unknown</dd></div>
               <div><dt>Fallback</dt><dd id="cudaFallbackStatus">CPU / int8</dd></div>
             </dl>
             <div id="cudaTroubleshooter" class="cuda-panel" hidden>
               <div>
-                <strong>Windows CUDA troubleshooting</strong>
-                <p class="muted">Use this if NVIDIA/CUDA is visible on the computer but Church Cap still falls back to CPU. Force reinstall removes cached CUDA runtime wheels and downloads fresh local packages into this Church Cap folder's <code>.venv</code>, so it needs internet access while reinstalling.</p>
+                <strong>NVIDIA CUDA troubleshooting</strong>
+                <p class="muted">Use this if NVIDIA/CUDA is visible on the computer but Church Cap still falls back to CPU. Install/repair downloads local CUDA runtime packages into this Church Cap folder's <code>.venv</code>, so it needs internet access. Restart Church Cap after it finishes.</p>
               </div>
               <div class="button-row spacious-actions">
                 <button type="button" class="secondary-button" onclick="checkCudaRuntime()">Check CUDA</button>
-                <button type="button" class="secondary-button" onclick="installCudaRuntime()">Force reinstall CUDA runtime</button>
+                <button type="button" class="secondary-button" onclick="installCudaRuntime()">Install / repair CUDA runtime</button>
               </div>
               <p id="cudaResult" class="muted small-result"></p>
             </div>
@@ -385,7 +528,8 @@
       {% set translation_current_max = runtime.translation_max_active_languages if runtime.translation_max_active_languages <= translation_max_limit else translation_max_limit %}
       <section class="operator-section" id="operator-section-languages" data-title="Languages" data-description="{% if deployment.capabilities.translation_advanced %}Optional CPU translation controls for services that can accept higher latency.{% else %}Experimental UI language and translated-caption controls.{% endif %}" {% if not deployment.capabilities.show_translation_setup %}hidden{% endif %}>
         <div class="operator-grid two-card-grid">
-          <article class="operator-panel glass-card translation-panel">
+          <article class="operator-panel glass-card translation-panel operator-subpage-item subpage-visible" data-subpages="multilingual-captions advanced-language-controls">
+            <div class="language-subpage-content operator-subpage-item subpage-visible" data-subpage="multilingual-captions">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Experimental</p>
@@ -433,6 +577,7 @@
             <div class="button-row language-save-row language-primary-save-row">
               <button id="translationPrimarySave" type="button" class="primary-button" onclick="saveTranslationSettings()">Save language settings</button>
             </div>
+            <p id="translationPrimaryResult" class="muted small-result" role="status" aria-live="polite"></p>
             <div id="translationCapacityWarning" class="warning-panel slim-warning glass-card" hidden>
               <strong>CPU translation limit:</strong> this appliance is using CPU translation or has no ready CUDA acceleration. Keep active translated languages low for live services unless a benchmark proves more is safe.
             </div>
@@ -449,28 +594,50 @@
             <div class="translation-resource-panel">
               <strong>Language resources</strong>
               <p id="translationResourceSummary" class="muted">Checking installed translation resources…</p>
-              <p class="muted small-result"><strong>Storage guide:</strong> Recommended may temporarily use about 2 GB while converting its roughly 1.2 GB source download. Compatibility keeps that source download. Base package size varies with installed languages. Review retained downloads later in Diagnostics → Storage use.</p>
+              <p class="muted small-result"><strong>Storage guide:</strong> Recommended includes broad SMaLL-100 coverage plus Tigrinya and may temporarily use about 2.5 GB while converting roughly 1.5 GB of source downloads. Compatibility keeps its source download. Base package size varies with installed languages. Review retained downloads later in Diagnostics → Application Storage.</p>
               <div id="translationPerformancePrompt" class="translation-performance-card">
                 <div>
                   <strong id="translationPerformanceTitle">Improve translation performance</strong>
                   <p id="translationPerformanceCopy" class="muted">Install the faster local translation engine if this computer struggles with more than one translated language. It stays local, but needs internet once and can take several minutes.</p>
                 </div>
                 <div class="button-row">
-                  <button id="translationPerformanceInstallButton" type="button" class="primary-button" onclick="installTranslationResources('ct2small100')">Install faster translation</button>
+                  <button id="translationPerformanceInstallButton" type="button" class="primary-button" data-translation-install-button onclick="installTranslationResources('ct2small100')">Install faster translation</button>
                   <button id="translationPerformanceUseButton" type="button" class="secondary-button" onclick="useFasterTranslationMode()" hidden>Use faster translation</button>
                 </div>
               </div>
               <div class="button-row spacious-actions">
-                <button type="button" class="secondary-button" onclick="installTranslationResources('ct2small100')">Install Recommended package</button>
-                <button type="button" class="secondary-button" onclick="installTranslationResources('argos')">Install Base package</button>
-                <button type="button" class="secondary-button" onclick="installTranslationResources('argos_all')">Install all Base packages</button>
-                <button type="button" class="secondary-button" onclick="installTranslationResources('small100')">Install Compatibility package</button>
+                <button id="translationRecommendedInstallButton" type="button" class="secondary-button" data-translation-install-button onclick="installTranslationResources('ct2small100')">Install / repair Recommended package</button>
+                <button type="button" class="secondary-button" data-translation-install-button onclick="installTranslationResources('argos')">Install Base package</button>
+                <button type="button" class="secondary-button" data-translation-install-button onclick="installTranslationResources('argos_all')">Install all Base packages</button>
+                <button type="button" class="secondary-button" data-translation-install-button onclick="installTranslationResources('small100')">Install Compatibility package</button>
               </div>
               <p id="translationInstallResult" class="muted small-result"></p>
+              <div id="translationInstallProgress" class="spoken-audio-install-progress installer-progress-panel" role="status" aria-live="polite" hidden>
+                <div class="spoken-audio-install-progress-heading">
+                  <span id="translationInstallSpinner" class="spoken-audio-install-spinner" aria-hidden="true"></span>
+                  <strong id="translationInstallProgressTitle">Preparing translation installation…</strong>
+                  <span id="translationInstallProgressPercent" class="install-progress-percent">0%</span>
+                </div>
+                <div class="spoken-audio-install-progress-track" aria-hidden="true">
+                  <span id="translationInstallProgressBar"></span>
+                </div>
+                <p id="translationInstallProgressText" class="muted small-result">Preparing the selected translation package.</p>
+                <p id="translationInstallProgressMeta" class="install-progress-meta" hidden></p>
+                <div id="translationPackageProgress" class="installer-package-progress-list" aria-label="Translation language package progress" hidden></div>
+              </div>
             </div>
             {% endif %}
-            <details class="advanced-settings">
-              <summary>Advanced language controls</summary>
+            </div>
+            <div class="language-subpage-content operator-subpage-item" data-subpage="advanced-language-controls">
+              <div class="panel-heading-row">
+                <div>
+                  <p class="eyebrow">Languages</p>
+                  <h2>Advanced language controls <span class="beta-pill">Beta</span></h2>
+                </div>
+                <span class="status-pill">Local translation</span>
+              </div>
+              <p class="muted">Choose which languages visitors can use, how Church Cap prioritises capacity, and when translated captions update.</p>
+            <div class="advanced-settings advanced-settings-page">
               <label for="translationLanguagePolicy">Language availability</label>
               <select id="translationLanguagePolicy">
                 <option value="automatic" {% if runtime.translation_language_policy != 'restricted' %}selected{% endif %}>Automatic — visitors can request any supported language</option>
@@ -511,13 +678,14 @@
                 <div class="operator-language-grid" id="operatorLanguageGrid" role="listbox" aria-label="Restricted caption languages"></div>
                 <p id="operatorLanguageEmpty" class="language-empty" hidden>No languages found.</p>
               </fieldset>
-            </details>
+            </div>
             <p class="muted">Recommended package uses CTranslate2 INT8 with a local SMaLL-100 model for broad, efficient translation. Base package uses installed Argos Translate packs. Compatibility package keeps the older PyTorch SMaLL-100 path available. Auto uses Recommended first, then Base, then Compatibility when needed.</p>
             <p id="translationProviderStatus" class="muted small-result">Provider status will appear here.</p>
             <p id="translationResult" class="muted small-result"></p>
+            </div>
           </article>
 
-          <article class="operator-panel glass-card">
+          <article class="operator-panel glass-card operator-subpage-item subpage-visible" data-subpages="multilingual-captions advanced-language-controls">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Audience</p>
@@ -535,44 +703,111 @@
             </table>
             <p class="muted">The phone UI language switch works locally. Translated captions appear only when the operator enables translation and a provider is configured.</p>
           </article>
+          <article class="operator-panel glass-card language-spoken-audio-panel operator-subpage-item" data-subpage="spoken-translated-audio">
+            <div class="panel-heading-row">
+              <div>
+                <p class="eyebrow">Accessibility</p>
+                <h2>Spoken translated audio</h2>
+              </div>
+              <span class="status-pill" id="translatedAudioStatusPill">Checking…</span>
+            </div>
+            <p class="muted">Let visitors listen to completed translated captions through headphones. Choose only the local voice packs this church needs; normal Church Cap setup does not download them.</p>
+            <p id="translatedAudioStatus" class="muted small-result" role="status" aria-live="polite">Checking the local speech runtime and installed voices…</p>
+            <div class="warning-panel slim-warning glass-card spoken-audio-size-warning">
+              <strong>Optional large download:</strong> installing every listed voice is approximately 717 MB of downloads and may use about 1.6 GB after extraction, plus the optional speech runtime. The estimate for your current selection appears below. Installation runs only when you select the button and is never part of normal setup.
+            </div>
+            <div class="spoken-audio-catalog-toolbar">
+              <div class="button-row">
+                <button type="button" class="secondary-button compact-button" onclick="selectTranslatedAudioPackages(true)">Select all</button>
+                <button type="button" class="secondary-button compact-button" onclick="selectTranslatedAudioPackages(false)">Clear all</button>
+              </div>
+              <strong id="translatedAudioSelectionSize">Checking available packs…</strong>
+            </div>
+            <div id="translatedAudioCatalog" class="spoken-audio-catalog" aria-label="Optional spoken-language packs">
+              <p class="muted small-result">Loading the reviewed spoken-language catalogue…</p>
+            </div>
+            <div class="button-row spacious-actions">
+              <button type="button" id="translatedAudioInstallButton" class="primary-button" onclick="installTranslatedAudio()">Install selected languages</button>
+              <button type="button" id="translatedAudioRemoveButton" class="secondary-button" onclick="openTranslatedAudioRemoveDialog()" disabled>Remove installed languages</button>
+              <a class="button-link secondary" href="/docs/spoken-language-models" target="_blank" rel="noopener">Review voice licences</a>
+            </div>
+            <div id="translatedAudioInstallProgress" class="spoken-audio-install-progress" role="status" aria-live="polite" hidden>
+              <div class="spoken-audio-install-progress-heading">
+                <span id="translatedAudioInstallSpinner" class="spoken-audio-install-spinner" aria-hidden="true"></span>
+                <strong id="translatedAudioInstallProgressTitle">Preparing spoken-language installation…</strong>
+                <span id="translatedAudioInstallProgressPercent" class="install-progress-percent">0%</span>
+              </div>
+              <div class="spoken-audio-install-progress-track" aria-hidden="true">
+                <span id="translatedAudioInstallProgressBar"></span>
+              </div>
+              <p id="translatedAudioInstallProgressText" class="muted small-result">Keep Church Cap open. Internet access is required and larger packs may take several minutes.</p>
+              <p id="translatedAudioInstallProgressMeta" class="install-progress-meta" hidden></p>
+              <div id="translatedAudioPackageProgress" class="installer-package-progress-list" aria-label="Selected spoken-language package progress" hidden></div>
+            </div>
+            <label class="toggle-row language-speech-toggle" for="translatedAudioEnabled">
+              <input id="translatedAudioEnabled" type="checkbox" {% if runtime.translated_audio_enabled|default(true) %}checked{% endif %} onchange="saveTranslatedAudioSetting(this)">
+              <span class="toggle-slider small" aria-hidden="true"></span>
+              <span class="toggle-copy">
+                <strong>Make spoken audio available to visitors</strong>
+                <small>Show headphone markers and the Listen control for installed voices. This saves immediately and does not affect translated text captions.</small>
+              </span>
+              <span id="languageTranslatedAudioStatus" class="status-pill">Checking…</span>
+            </label>
+            <p id="languageTranslatedAudioResult" class="muted small-result" role="status" aria-live="polite"></p>
+          </article>
         </div>
       </section>
 
-      <section class="operator-section" id="operator-section-audience" data-title="Audience & OBS" data-description="Show QR codes, local links, and livestream overlay information.">
+      <section class="operator-section" id="operator-section-audience" data-title="Congregation" data-description="Help the congregation join captions and connect room or livestream displays.">
         <div class="operator-grid two-card-grid">
-          <article class="operator-panel glass-card qr-panel premium-qr-panel">
+          <article class="operator-panel glass-card qr-panel premium-qr-panel operator-subpage-item subpage-visible" data-subpage="room-access">
             <div class="panel-heading-row">
               <div>
-                <p class="eyebrow">Room access</p>
-                <h2>Audience QR codes</h2>
+                <p class="eyebrow">Join live captions</p>
+                <h2>Congregation QR codes</h2>
               </div>
             </div>
             <div class="qr-duo-grid">
               <div class="qr-mini-card">
-                <p class="tiny-label">Preferred</p>
+                <p class="tiny-label">{% if hostname_configured %}Configured hostname{% else %}Optional hostname · setup required{% endif %}</p>
                 <img src="/qr.png" alt="QR code for live captions using local hostname">
                 <p class="address-line"><span class="tiny-label">Hostname</span><code>{{ detected_hostname }}</code></p>
                 <p><a href="{{ caption_url }}">{{ caption_url }}</a></p>
                 <a class="button-link secondary-button qr-download-button" href="/qr.png" download="church-cap-hostname-qr.png" onclick="return handleOperatorQrDownload(event, 'audience_qr')"><span class="operatorQrDownloadLabel">Download QR</span></a>
               </div>
               <div class="qr-mini-card">
-                <p class="tiny-label">Android / guest Wi‑Fi fallback</p>
+                <p class="tiny-label">{% if hostname_configured %}Android / guest Wi‑Fi fallback{% else %}Recommended direct connection{% endif %}</p>
                 <img src="/qr-ip.png" alt="Fallback QR code for live captions using IP address">
                 <p class="address-line"><span class="tiny-label">Direct IP</span><code>{{ caption_ip_url }}</code></p>
                 <p><a href="{{ caption_ip_url }}">{{ caption_ip_url }}</a></p>
                 <a class="button-link secondary-button qr-download-button" href="/qr-ip.png" download="church-cap-ip-fallback-qr.png" onclick="return handleOperatorQrDownload(event, 'audience_qr_ip')"><span class="operatorQrDownloadLabel">Download QR</span></a>
               </div>
             </div>
-            <p class="muted">Use the hostname QR first. If some Android phones cannot open <code>.local</code>, use the IP fallback QR or configure router DNS/mDNS forwarding.</p>
+            {% if hostname_configured %}
+            <p class="muted">Use the hostname QR first. If some phones cannot open it, use the direct-IP QR or configure router DNS/mDNS forwarding.</p>
+            {% else %}
+            <p class="muted">The hostname QR is available for future use but will not resolve until local DNS or mDNS is configured. For now, use the direct-IP QR. If that does not open, allow the viewer port through the Linux firewall and check that the router does not isolate Wi-Fi clients.</p>
+            {% endif %}
           </article>
-          <article class="operator-panel glass-card output-links-panel">
+          <article class="operator-panel glass-card output-links-panel operator-subpage-item" data-subpages="room-display obs-live-stream">
+            <div class="operator-subpage-item subpage-visible" data-subpage="room-display">
             <div class="panel-heading-row">
               <div>
-                <p class="eyebrow">Outputs</p>
-                <h2>Room display and livestream</h2>
+                <p class="eyebrow">Room display</p>
+                <h2>Projector or confidence screen</h2>
               </div>
             </div>
-            <p class="muted">Use these when captions need to appear on a projector, confidence screen, display capture, or OBS browser source. Audience phones should use the QR codes on the left.</p>
+            <p class="muted">Show large, clean captions on an in-room projector, confidence screen, or display capture.</p>
+            </div>
+            <div class="operator-subpage-item" data-subpage="obs-live-stream">
+              <div class="panel-heading-row">
+                <div>
+                  <p class="eyebrow">OBS live stream</p>
+                  <h2>Livestream browser source</h2>
+                </div>
+              </div>
+              <p class="muted">Add transparent lower-third captions to OBS, vMix, or similar livestream software.</p>
+            </div>
             <p class="muted">System IP address: <code>{{ system_ip }}</code></p>
             {% if deployment.capabilities.is_appliance %}
             <div class="warning-panel slim-warning output-safeguard-note">
@@ -580,7 +815,7 @@
             </div>
             {% endif %}
             <div class="output-option-grid">
-              <div class="output-option-card">
+              <div class="output-option-card operator-subpage-item subpage-visible" data-subpage="room-display">
                 <p class="tiny-label">Room display</p>
                 <h3>Projector or confidence screen</h3>
                 <p class="muted">Shows a large caption view for in-room screens. Use the direct IP address when the display computer cannot resolve the local hostname.</p>
@@ -590,7 +825,7 @@
                 </dl>
                 <a class="button-link secondary" href="{{ display_url }}" onclick="return handleApplianceOutputLink(event, 'display')">Open display</a>
               </div>
-              <div class="output-option-card">
+              <div class="output-option-card operator-subpage-item" data-subpage="obs-live-stream">
                 <p class="tiny-label">OBS overlay</p>
                 <h3>Livestream browser source</h3>
                 <p class="muted">Transparent lower-third captions for OBS, vMix, or similar software. Add the URL as a browser source on the streaming computer.</p>
@@ -661,9 +896,9 @@
         </div>
       </section>
 
-      <section class="operator-section" id="operator-section-privacy" data-title="Privacy" data-description="Control transcript storage and remove content when needed.">
+      <section class="operator-section" id="operator-section-privacy" data-title="Privacy &amp; Security" data-description="Review local access, transcript retention, caption safety, and church guidance.">
         <div class="operator-grid two-card-grid">
-<article class="operator-panel glass-card security-status-card ">
+          <article class="operator-panel glass-card security-status-card operator-subpage-item subpage-visible" data-subpage="security">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Security</p>
@@ -692,7 +927,7 @@
             </div>
           </article>
 
-          <article class="operator-panel glass-card">
+          <article class="operator-panel glass-card operator-subpage-item" data-subpage="transcript-controls">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Retention</p>
@@ -730,7 +965,22 @@
             <p id="privacyResult" class="muted small-result"></p>
           </article>
 
-          <article class="operator-panel glass-card">
+          <article class="operator-panel glass-card operator-subpage-item" data-subpage="guidance">
+            <div class="panel-heading-row">
+              <div>
+                <p class="eyebrow">Guidance</p>
+                <h2>Privacy and notices</h2>
+              </div>
+            </div>
+            <p class="muted">Use clear signage and keep the service local unless the church intentionally enables streaming or remote access.</p>
+            <div class="stacked-links">
+              <a class="button-link secondary" href="/docs/privacy">Privacy statement</a>
+              <a class="button-link secondary" href="/docs/church-notice">Church notice wording</a>
+              <a class="button-link secondary" href="/docs/disclaimer">AI caption disclaimer</a>
+            </div>
+          </article>
+
+          <article class="operator-panel glass-card operator-subpage-item" data-subpage="guidance">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Caption safety</p>
@@ -749,27 +999,12 @@
             </div>
             <p id="profanityFilterResult" class="muted small-result"></p>
           </article>
-
-          <article class="operator-panel glass-card">
-            <div class="panel-heading-row">
-              <div>
-                <p class="eyebrow">Guidance</p>
-                <h2>Privacy and notices</h2>
-              </div>
-            </div>
-            <p class="muted">Use clear signage and keep the service local unless the church intentionally enables streaming or remote access.</p>
-            <div class="stacked-links">
-              <a class="button-link secondary" href="/docs/privacy">Privacy statement</a>
-              <a class="button-link secondary" href="/docs/church-notice">Church notice wording</a>
-              <a class="button-link secondary" href="/docs/disclaimer">AI caption disclaimer</a>
-            </div>
-          </article>
         </div>
       </section>
 
       <section class="operator-section" id="operator-section-diagnostics" data-title="Diagnostics" data-description="Download local troubleshooting details for macOS, Windows, or Linux support.">
         <div class="operator-grid two-card-grid">
-          <article class="operator-panel glass-card wide-card">
+          <article class="operator-panel glass-card wide-card operator-subpage-item subpage-visible" data-subpage="support">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Support</p>
@@ -790,17 +1025,33 @@
               <a class="button-link secondary" href="/feedback">Open feedback page</a>
             </div>
           </article>
-          <article class="operator-panel glass-card wide-card storage-use-panel">
+          <article class="operator-panel glass-card wide-card storage-use-panel operator-subpage-item" data-subpage="application-storage">
             <div class="panel-heading-row">
               <div>
                 <p class="eyebrow">Local storage</p>
-                <h2>Storage use</h2>
+                <h2>Application storage</h2>
               </div>
               <span class="status-pill" id="storageUseTotal">Checking…</span>
             </div>
             <p class="muted">See how much space Church Cap and its local AI downloads use. Logs are automatically limited to 5 MB each with two archived copies.</p>
             <div id="storageCategoryList" class="storage-category-list" aria-live="polite">
-              <p class="muted small-result">Open Diagnostics to calculate storage use.</p>
+              <p class="muted small-result">Open Application Storage to calculate local storage use.</p>
+            </div>
+            <div class="diagnostics-spoken-audio-storage">
+              <div class="panel-heading-row compact-heading-row">
+                <div>
+                  <p class="eyebrow">Optional voice models</p>
+                  <h3>Spoken audio models</h3>
+                </div>
+                <span class="status-pill" id="diagnosticsSpokenAudioTotal">Not checked</span>
+              </div>
+              <p class="muted small-result">Actual storage used by installed reviewed voice models. Text-caption translation and the shared speech runtime are counted elsewhere and are not removed here.</p>
+              <div id="diagnosticsSpokenAudioList" class="storage-category-list" aria-live="polite">
+                <p class="muted small-result">Refresh storage to check installed spoken-language models.</p>
+              </div>
+              <div class="button-row spacious-actions">
+                <button type="button" id="diagnosticsTranslatedAudioRemoveButton" class="secondary-button" onclick="openTranslatedAudioRemoveDialog()" disabled>Remove installed languages</button>
+              </div>
             </div>
             <p id="storageUseStatus" class="muted small-result" role="status" aria-live="polite">Storage has not been checked yet.</p>
             <div class="button-row spacious-actions">
@@ -904,6 +1155,20 @@
     </div>
   </dialog>
 
+  <dialog id="serviceContextInformationDialog" class="service-leader-dialog service-leader-confirm-dialog glass-card" aria-labelledby="serviceContextInformationTitle">
+    <form method="dialog"><button class="dialog-close" aria-label="Close Service Context information">×</button></form>
+    <p class="eyebrow">Service Context · Beta · Optional</p>
+    <h2 id="serviceContextInformationTitle">Test this before using it in a live service</h2>
+    <p class="muted">Service Context uses deterministic temporary corrections by default, so uploaded suggestions do not change Whisper's recognition or normal caption workload.</p>
+    <div class="warning-panel slim-warning glass-card">
+      <strong>Experimental option:</strong> Direct recognition assistance may increase processing load, caption latency, or unstable wording on some computers and speech models. It is off by default, limited to two selected terms, and should be tested before production use. A full script does not become a word-for-word source—the microphone and Whisper still decide every caption.
+    </div>
+    <p class="muted">Prefer an explicit “heard as → replace with” correction after a short rehearsal. Enable recognition assistance only for a particularly difficult name, then compare accuracy and delay with it switched off. Bible-reference formatting remains available without uploaded notes.</p>
+    <div class="button-row spacious-actions">
+      <button type="button" onclick="document.getElementById('serviceContextInformationDialog').close()">I understand</button>
+    </div>
+  </dialog>
+
   <dialog
     id="storageCleanupDialog"
     class="service-leader-dialog service-leader-confirm-dialog glass-card storage-cleanup-dialog"
@@ -911,7 +1176,7 @@
     aria-describedby="storageCleanupMessage"
   >
     <form method="dialog"><button class="dialog-close" aria-label="Close storage cleanup dialog">×</button></form>
-    <p class="eyebrow">Diagnostics · Storage use</p>
+    <p class="eyebrow">Diagnostics · Application Storage</p>
     <h2 id="storageCleanupTitle">Review unused downloads</h2>
     <p id="storageCleanupMessage" class="muted">Select only the items you want Church Cap to remove. Active models, settings, transcripts, and current logs are protected.</p>
     <div id="storageCleanupList" class="storage-cleanup-list"></div>
@@ -938,6 +1203,26 @@
     <div class="button-row spacious-actions">
       <button id="resetServiceMeasurementsConfirm" type="button" class="service-leader-danger-button">Reset measurements</button>
       <button type="button" class="secondary-button" onclick="document.getElementById('resetServiceMeasurementsDialog').close()">Keep measurements</button>
+    </div>
+  </dialog>
+
+  <dialog
+    id="translatedAudioRemoveDialog"
+    class="service-leader-dialog service-leader-confirm-dialog glass-card storage-cleanup-dialog"
+    aria-labelledby="translatedAudioRemoveTitle"
+    aria-describedby="translatedAudioRemoveMessage"
+  >
+    <form method="dialog"><button class="dialog-close" aria-label="Close spoken-language removal dialog">×</button></form>
+    <p class="eyebrow">Languages · Spoken translated audio</p>
+    <h2 id="translatedAudioRemoveTitle">Remove installed voice models?</h2>
+    <p id="translatedAudioRemoveMessage" class="muted">Select the spoken-language models you no longer need. Their Listen option will disappear from audience devices. Other voices, the shared speech runtime, licence notices, and text-caption translation remain installed.</p>
+    <div id="translatedAudioRemoveList" class="storage-cleanup-list"></div>
+    <p id="translatedAudioRemoveSummary" class="service-leader-warning-note">Nothing selected.</p>
+    <p class="muted small-result"><strong>This cannot be undone without downloading the selected models again.</strong> Removal is available only while captions are stopped.</p>
+    <p id="translatedAudioRemoveError" class="muted service-leader-warning-note" role="status" aria-live="polite" hidden></p>
+    <div class="button-row spacious-actions">
+      <button id="translatedAudioRemoveConfirm" type="button" class="service-leader-danger-button" disabled>Remove selected models</button>
+      <button type="button" class="secondary-button" onclick="document.getElementById('translatedAudioRemoveDialog').close()">Keep installed models</button>
     </div>
   </dialog>
 
@@ -975,6 +1260,10 @@
     let serviceLeaderPairingTimer = null;
     let serviceLeaderPairingExpiresAt = 0;
     let serviceLeaderPairingSessionBaseline = 0;
+    let translatedAudioCatalogState = [];
+    let translatedAudioInstalledPackageIds = [];
+    let translatedAudioCaptionsRunning = false;
+    let translatedAudioRemovalNotice = '';
 
     const diagnosticsDownloadButtonText = document.getElementById('diagnosticsDownloadButtonText');
     if (document.body.dataset.appliance === 'true') {
@@ -991,30 +1280,462 @@
       };
     });
 
+    const operatorSubsectionDefaults = {
+      dashboard: 'live-service',
+      languages: 'multilingual-captions',
+      audience: 'room-access',
+      privacy: 'security',
+      diagnostics: 'support'
+    };
+    const operatorRouteAliases = {
+      'live-service': ['dashboard', 'live-service'],
+      'service-context': ['dashboard', 'service-context'],
+      performance: ['dashboard', 'performance'],
+      'multilingual-captions': ['languages', 'multilingual-captions'],
+      'advanced-language-controls': ['languages', 'advanced-language-controls'],
+      'spoken-translated-audio': ['languages', 'spoken-translated-audio'],
+      'room-access': ['audience', 'room-access'],
+      'room-display': ['audience', 'room-display'],
+      'obs-live-stream': ['audience', 'obs-live-stream'],
+      security: ['privacy', 'security'],
+      'transcript-controls': ['privacy', 'transcript-controls'],
+      guidance: ['privacy', 'guidance'],
+      support: ['diagnostics', 'support'],
+      'application-storage': ['diagnostics', 'application-storage']
+    };
+
+    function syncNavSubmenuAccessibility() {
+      const sidebarCollapsed = document.body.classList.contains('operator-sidebar-collapsed');
+      document.querySelectorAll('.nav-menu-group[data-nav-group]').forEach((group) => {
+        const submenu = group.querySelector('.nav-submenu');
+        if (!submenu) return;
+        const interactive = group.classList.contains('expanded') && !sidebarCollapsed;
+        submenu.setAttribute('aria-hidden', String(!interactive));
+        submenu.toggleAttribute('inert', !interactive);
+      });
+    }
+
+    function setExpandedNavGroup(sectionName = '') {
+      document.querySelectorAll('.nav-menu-group[data-nav-group]').forEach((group) => {
+        const expanded = group.dataset.navGroup === sectionName;
+        group.classList.toggle('expanded', expanded);
+        const button = group.querySelector('.nav-parent-button');
+        if (button) button.setAttribute('aria-expanded', String(expanded));
+      });
+      syncNavSubmenuAccessibility();
+    }
+
+    function toggleNavGroup(sectionName) {
+      if (document.body.classList.contains('operator-sidebar-collapsed')) setSidebarCollapsed(false);
+      const group = document.querySelector(`.nav-menu-group[data-nav-group="${sectionName}"]`);
+      setExpandedNavGroup(group?.classList.contains('expanded') ? '' : sectionName);
+    }
+
+    function resolveOperatorRoute(sectionName, subsectionName = '') {
+      let section = String(sectionName || '').trim();
+      let subsection = String(subsectionName || '').trim();
+      if (section.includes('/')) [section, subsection = ''] = section.split('/', 2);
+      if (!sectionCopy[section] && operatorRouteAliases[section]) [section, subsection] = operatorRouteAliases[section];
+      const requestedSection = document.getElementById(`operator-section-${section}`);
+      if (!sectionCopy[section] || requestedSection?.hidden) return ['dashboard', 'live-service'];
+      const defaultSubsection = operatorSubsectionDefaults[section] || '';
+      if (defaultSubsection) {
+        const matchingButton = document.querySelector(`.nav-submenu-button[data-section="${section}"][data-subsection="${subsection}"]`);
+        if (!matchingButton) subsection = defaultSubsection;
+      } else {
+        subsection = '';
+      }
+      return [section, subsection];
+    }
+
     function setSidebarCollapsed(collapsed) {
       document.body.classList.toggle('operator-sidebar-collapsed', collapsed);
       localStorage.setItem('operatorSidebarCollapsed', String(collapsed));
       const toggle = document.getElementById('sidebarToggle');
       if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+      syncNavSubmenuAccessibility();
     }
 
-    function showOperatorSection(sectionName) {
-      const requestedSection = document.getElementById(`operator-section-${sectionName}`);
-      if (!sectionCopy[sectionName] || requestedSection?.hidden) sectionName = 'dashboard';
-      if (sectionName === 'languages') showCpuTranslationPrompt();
+    function showOperatorSection(sectionName, subsectionName = '') {
+      [sectionName, subsectionName] = resolveOperatorRoute(sectionName, subsectionName);
+      if (sectionName === 'languages' && subsectionName !== 'spoken-translated-audio') showCpuTranslationPrompt();
       document.querySelectorAll('.operator-section').forEach((section) => {
         section.classList.toggle('active', section.id === `operator-section-${sectionName}`);
       });
+      const activeSection = document.getElementById(`operator-section-${sectionName}`);
+      if (activeSection) {
+        activeSection.dataset.activeSubpage = subsectionName;
+        activeSection.querySelectorAll('.operator-subpage-item').forEach((item) => {
+          const subpages = item.dataset.subpages?.split(/\s+/).filter(Boolean) || [];
+          const visible = item.dataset.subpage === subsectionName || subpages.includes(subsectionName);
+          item.classList.toggle('subpage-visible', visible);
+        });
+      }
       document.querySelectorAll('.nav-button[data-section]').forEach((button) => {
-        button.classList.toggle('active', button.dataset.section === sectionName);
+        button.classList.toggle('active', button.dataset.section === sectionName && !button.dataset.subsection);
       });
+      document.querySelectorAll('.nav-parent-button[data-menu-category]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.menuCategory === sectionName);
+      });
+      document.querySelectorAll('.nav-submenu-button[data-section]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.section === sectionName && button.dataset.subsection === subsectionName);
+      });
+      setExpandedNavGroup(operatorSubsectionDefaults[sectionName] ? sectionName : '');
       const copy = sectionCopy[sectionName] || sectionCopy.dashboard;
+      const activeSubmenuButton = subsectionName
+        ? document.querySelector(`.nav-submenu-button[data-section="${sectionName}"][data-subsection="${subsectionName}"]`)
+        : null;
       const eyebrow = document.getElementById('operatorSectionEyebrow');
       const description = document.getElementById('operatorSectionDescription');
-      if (eyebrow) eyebrow.textContent = copy.title;
-      if (description) description.textContent = copy.description;
+      if (eyebrow) eyebrow.textContent = activeSubmenuButton ? `${copy.title} · ${activeSubmenuButton.dataset.label || activeSubmenuButton.textContent.trim()}` : copy.title;
+      if (description) description.textContent = activeSubmenuButton?.dataset.description || copy.description;
       localStorage.setItem('operatorSection', sectionName);
-      if (sectionName === 'diagnostics') refreshStorageUse();
+      if (subsectionName) localStorage.setItem('operatorSubsection', subsectionName);
+      else localStorage.removeItem('operatorSubsection');
+      if (sectionName === 'diagnostics' && subsectionName === 'application-storage') refreshStorageUse(true);
+      if (sectionName === 'dashboard' && subsectionName === 'service-context') refreshServiceContext();
+    }
+
+    const SERVICE_CONTEXT_HINT_LIMIT = 2;
+    let serviceContextReview = {terms: [], references: [], corrections: [], recognition_assistance_enabled: false};
+    let serviceContextEditing = false;
+
+    function showServiceContextInformation() {
+      const dialog = document.getElementById('serviceContextInformationDialog');
+      if (dialog?.showModal) dialog.showModal();
+    }
+
+    function setServiceContextMessage(message = '', tone = '') {
+      const result = document.getElementById('serviceContextResult');
+      if (!result) return;
+      result.textContent = message;
+      result.classList.toggle('error', tone === 'error');
+      result.classList.toggle('visible', Boolean(message));
+    }
+
+    function serviceContextStatePanel(name) {
+      return document.getElementById(`serviceContext${name}State`);
+    }
+
+    function showServiceContextPanel(name) {
+      ['Input', 'Processing', 'Review', 'Ready'].forEach((panelName) => {
+        const panel = serviceContextStatePanel(panelName);
+        if (panel) panel.hidden = panelName !== name;
+      });
+    }
+
+    function createServiceContextChoice(label, detail, selected, onRemove) {
+      const item = document.createElement('label');
+      item.className = 'service-context-choice';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = selected !== false;
+      const copy = document.createElement('span');
+      const strong = document.createElement('strong');
+      strong.textContent = label;
+      copy.appendChild(strong);
+      if (detail) {
+        const small = document.createElement('small');
+        small.textContent = detail;
+        copy.appendChild(small);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'service-context-remove';
+      remove.setAttribute('aria-label', `Remove ${label}`);
+      remove.textContent = '×';
+      remove.addEventListener('click', (event) => { event.preventDefault(); onRemove(); });
+      item.append(checkbox, copy, remove);
+      item._serviceContextCheckbox = checkbox;
+      return item;
+    }
+
+    function renderServiceContextReview() {
+      const terms = document.getElementById('serviceContextTerms');
+      const references = document.getElementById('serviceContextReferences');
+      if (!terms || !references) return;
+      terms.replaceChildren();
+      const recognitionAssistEnabled = serviceContextReview.recognition_assistance_enabled === true;
+      const recognitionAssistToggle = document.getElementById('serviceContextRecognitionAssist');
+      if (recognitionAssistToggle) recognitionAssistToggle.checked = recognitionAssistEnabled;
+      const recognitionAssistHelp = document.getElementById('serviceContextRecognitionAssistHelp');
+      if (recognitionAssistHelp) {
+        recognitionAssistHelp.textContent = recognitionAssistEnabled
+          ? `Select no more than ${SERVICE_CONTEXT_HINT_LIMIT} genuinely difficult proper names. These terms will be supplied to Whisper on each live recognition pass.`
+          : 'Suggestions are not currently changing recognition. Use temporary corrections below after a short rehearsal.';
+      }
+      serviceContextReview.terms.forEach((term, index) => {
+        const termDetail = term.included === false
+          ? `${term.reason || 'approved by operator'} · Suggestion only`
+          : (term.reason || '');
+        const choice = createServiceContextChoice(term.text, termDetail, term.selected, () => {
+          serviceContextReview.terms.splice(index, 1);
+          renderServiceContextReview();
+        });
+        choice._serviceContextCheckbox.disabled = !recognitionAssistEnabled;
+        choice._serviceContextCheckbox.addEventListener('change', () => {
+          term.selected = choice._serviceContextCheckbox.checked;
+          const selectedCount = serviceContextReview.terms.filter((item) => item.selected === true).length;
+          if (selectedCount > SERVICE_CONTEXT_HINT_LIMIT) {
+            term.selected = false;
+            choice._serviceContextCheckbox.checked = false;
+            setServiceContextMessage(`Choose no more than ${SERVICE_CONTEXT_HINT_LIMIT} recognition hints.`, 'error');
+          }
+          const currentSelected = serviceContextReview.terms.filter((item) => item.selected === true).length;
+          const counter = document.getElementById('serviceContextTermCount');
+          if (counter) counter.textContent = `${currentSelected} of ${SERVICE_CONTEXT_HINT_LIMIT} selected · ${serviceContextReview.terms.length} suggested`;
+        });
+        terms.appendChild(choice);
+      });
+      references.replaceChildren();
+      serviceContextReview.references.forEach((reference, index) => {
+        const choice = createServiceContextChoice(reference.canonical, reference.spoken || '', reference.selected, () => {
+          serviceContextReview.references.splice(index, 1);
+          renderServiceContextReview();
+        });
+        choice._serviceContextCheckbox.addEventListener('change', () => { reference.selected = choice._serviceContextCheckbox.checked; });
+        references.appendChild(choice);
+      });
+      const termCount = document.getElementById('serviceContextTermCount');
+      const referenceCount = document.getElementById('serviceContextReferenceCount');
+      const selectedTermCount = serviceContextReview.terms.filter((item) => item.selected === true).length;
+      if (termCount) termCount.textContent = recognitionAssistEnabled
+        ? `${selectedTermCount} of ${SERVICE_CONTEXT_HINT_LIMIT} selected · ${serviceContextReview.terms.length} suggested`
+        : `${serviceContextReview.terms.length} suggested · assistance off`;
+      if (referenceCount) referenceCount.textContent = `${serviceContextReview.references.length} found`;
+      renderServiceContextCorrections();
+    }
+
+    function toggleServiceContextRecognitionAssist(enabled) {
+      serviceContextReview.recognition_assistance_enabled = enabled === true;
+      if (!serviceContextReview.recognition_assistance_enabled) {
+        serviceContextReview.terms.forEach((term) => { term.selected = false; });
+      }
+      renderServiceContextReview();
+    }
+
+    function renderServiceContextCorrections() {
+      const container = document.getElementById('serviceContextCorrections');
+      if (!container) return;
+      container.replaceChildren();
+      serviceContextReview.corrections.forEach((correction, index) => {
+        const row = document.createElement('div');
+        row.className = 'service-context-correction-row';
+        const heard = document.createElement('input');
+        heard.maxLength = 80;
+        heard.placeholder = 'Whisper may hear…';
+        heard.value = correction.heard_as || '';
+        heard.addEventListener('input', () => { correction.heard_as = heard.value; });
+        const arrow = document.createElement('span');
+        arrow.textContent = '→';
+        arrow.setAttribute('aria-hidden', 'true');
+        const replacement = document.createElement('input');
+        replacement.maxLength = 80;
+        replacement.placeholder = 'Replace with…';
+        replacement.value = correction.replace_with || '';
+        replacement.addEventListener('input', () => { correction.replace_with = replacement.value; });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'secondary-button service-context-remove-correction';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => { serviceContextReview.corrections.splice(index, 1); renderServiceContextCorrections(); });
+        row.append(heard, arrow, replacement, remove);
+        container.appendChild(row);
+      });
+    }
+
+    function renderServiceContext(context = {}) {
+      const state = String(context.state || 'empty');
+      const status = document.getElementById('serviceContextStatus');
+      const labels = {empty: 'Not prepared', processing: 'Analysing', review: 'Review needed', ready: 'Ready', locked: 'In use', inactive: 'Inactive'};
+      if (status) {
+        status.textContent = labels[state] || state;
+        status.classList.toggle('ok', ['ready', 'locked'].includes(state));
+      }
+      const liveLink = document.getElementById('preServiceContextLink');
+      if (liveLink) liveLink.classList.toggle('prepared', ['ready', 'locked'].includes(state));
+      if (serviceContextEditing && ['review', 'ready', 'inactive'].includes(state)) return;
+      if (state === 'processing') {
+        showServiceContextPanel('Processing');
+        return;
+      }
+      if (state === 'review') {
+        serviceContextReview = {
+          terms: (context.terms || []).map((item) => ({...item})),
+          references: (context.references || []).map((item) => ({...item})),
+          corrections: (context.corrections || []).map((item) => ({...item})),
+          recognition_assistance_enabled: context.recognition_assistance_enabled === true
+        };
+        const source = document.getElementById('serviceContextSourceSummary');
+        if (source) source.textContent = context.source_summary || 'Notes analysed';
+        showServiceContextPanel('Review');
+        renderServiceContextReview();
+        serviceContextEditing = true;
+        return;
+      }
+      if (['ready', 'locked', 'inactive'].includes(state)) {
+        serviceContextReview = {
+          terms: (context.terms || []).map((item) => ({...item})),
+          references: (context.references || []).map((item) => ({...item})),
+          corrections: (context.corrections || []).map((item) => ({...item})),
+          recognition_assistance_enabled: context.recognition_assistance_enabled === true
+        };
+        showServiceContextPanel('Ready');
+        const title = document.getElementById('serviceContextReadyTitle');
+        const eyebrow = document.getElementById('serviceContextReadyEyebrow');
+        const summary = document.getElementById('serviceContextReadySummary');
+        const lifecycle = document.getElementById('serviceContextLifecycleCopy');
+        const rearm = document.getElementById('serviceContextRearmButton');
+        const edit = document.getElementById('serviceContextEditButton');
+        const clear = document.getElementById('serviceContextClearButton');
+        const recognitionCopy = context.recognition_assistance_enabled
+          ? `${context.included_count || 0} experimental recognition hint${context.included_count === 1 ? '' : 's'}`
+          : 'Recognition assistance off';
+        const counts = `${recognitionCopy} · ${context.references?.length || 0} Bible references found · ${context.corrections?.length || 0} temporary corrections`;
+        if (summary) summary.textContent = counts;
+        if (state === 'locked') {
+          if (eyebrow) eyebrow.textContent = 'Live service · locked';
+          if (title) title.textContent = 'Service context is helping live captions';
+          if (lifecycle) lifecycle.textContent = 'It cannot be edited while captions are running and will become inactive when they stop.';
+        } else if (state === 'inactive') {
+          if (eyebrow) eyebrow.textContent = 'Previous service · inactive';
+          if (title) title.textContent = 'This context will not be reused automatically';
+          const hours = Math.max(1, Math.ceil(Number(context.inactive_seconds_remaining || 0) / 3600));
+          if (lifecycle) lifecycle.textContent = `Review and re-arm it explicitly if it belongs to another service. It will be cleared from memory in about ${hours} hour${hours === 1 ? '' : 's'}.`;
+        } else {
+          if (eyebrow) eyebrow.textContent = 'Ready for this service';
+          if (title) title.textContent = 'Service context is prepared';
+          if (lifecycle) lifecycle.textContent = 'It will lock when captions start and automatically become inactive when captions stop.';
+        }
+        if (rearm) rearm.hidden = state !== 'inactive';
+        if (edit) edit.hidden = state === 'locked';
+        if (clear) clear.hidden = state === 'locked';
+        return;
+      }
+      serviceContextEditing = false;
+      showServiceContextPanel('Input');
+    }
+
+    async function refreshServiceContext() {
+      try {
+        const response = await fetch('/api/service-context');
+        if (response.status === 401) { location.href = '/login'; return; }
+        renderServiceContext(await response.json());
+      } catch (error) {
+        setServiceContextMessage(`Could not load service context: ${error}`, 'error');
+      }
+    }
+
+    async function analyseServiceContext() {
+      const notes = document.getElementById('serviceContextNotes');
+      const file = document.getElementById('serviceContextFile');
+      const selectedFile = file?.files?.[0];
+      if (!selectedFile && !notes?.value.trim()) {
+        setServiceContextMessage('Paste notes or choose a .txt or .md file first.', 'error');
+        return;
+      }
+      if (selectedFile && selectedFile.size > 512 * 1024) {
+        setServiceContextMessage('The notes file must be no larger than 512 KiB.', 'error');
+        return;
+      }
+      setServiceContextMessage('');
+      serviceContextEditing = false;
+      showServiceContextPanel('Processing');
+      const form = new FormData();
+      if (selectedFile) form.append('file', selectedFile);
+      else form.append('notes', notes.value);
+      try {
+        const response = await fetch('/api/service-context/analyse', {method: 'POST', body: form});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'The notes could not be analysed.');
+        if (notes) notes.value = '';
+        if (file) file.value = '';
+        renderServiceContext(data);
+      } catch (error) {
+        showServiceContextPanel('Input');
+        setServiceContextMessage(String(error.message || error), 'error');
+      }
+    }
+
+    async function cancelServiceContextAnalysis() {
+      const response = await fetch('/api/service-context/cancel', {method: 'POST'});
+      renderServiceContext(await response.json());
+    }
+
+    function addServiceContextTerm() {
+      const input = document.getElementById('serviceContextManualTerm');
+      const value = String(input?.value || '').trim();
+      if (!value) return;
+      if (!serviceContextReview.terms.some((item) => item.text.toLowerCase() === value.toLowerCase())) {
+        const selectedCount = serviceContextReview.terms.filter((item) => item.selected === true).length;
+        const selected = serviceContextReview.recognition_assistance_enabled === true && selectedCount < SERVICE_CONTEXT_HINT_LIMIT;
+        serviceContextReview.terms.push({text: value, reason: 'added by operator', selected});
+        if (!selected && serviceContextReview.recognition_assistance_enabled) setServiceContextMessage(`Term added, but not selected because the ${SERVICE_CONTEXT_HINT_LIMIT}-hint shortlist is full.`, 'error');
+      }
+      if (input) input.value = '';
+      renderServiceContextReview();
+    }
+
+    function addServiceContextCorrection() {
+      if (serviceContextReview.corrections.length >= 40) return;
+      serviceContextReview.corrections.push({heard_as: '', replace_with: ''});
+      renderServiceContextCorrections();
+    }
+
+    async function approveServiceContext() {
+      const payload = {
+        recognition_assistance_enabled: serviceContextReview.recognition_assistance_enabled === true,
+        terms: serviceContextReview.terms.map((item) => ({text: item.text, selected: item.selected === true})),
+        references: serviceContextReview.references.filter((item) => item.selected !== false).map((item) => ({canonical: item.canonical, spoken: item.spoken})),
+        corrections: serviceContextReview.corrections.filter((item) => item.heard_as?.trim() && item.replace_with?.trim())
+      };
+      try {
+        const response = await fetch('/api/service-context/approve', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Service context could not be approved.');
+        serviceContextEditing = false;
+        renderServiceContext(data);
+        setServiceContextMessage(payload.recognition_assistance_enabled
+          ? 'Ready. Experimental recognition assistance and temporary corrections will be used for the next service. Test accuracy and delay before production use.'
+          : 'Ready in safe mode. Whisper recognition remains unchanged; temporary corrections will be applied after recognition. Bible-reference formatting is always available.');
+      } catch (error) {
+        setServiceContextMessage(String(error.message || error), 'error');
+      }
+    }
+
+    function editServiceContextReview() {
+      serviceContextEditing = true;
+      showServiceContextPanel('Review');
+      renderServiceContextReview();
+    }
+
+    async function resetServiceContextInput() {
+      await clearServiceContext();
+    }
+
+    async function clearServiceContext() {
+      try {
+        const response = await fetch('/api/service-context', {method: 'DELETE'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Service context could not be cleared.');
+        serviceContextEditing = false;
+        renderServiceContext(data);
+        setServiceContextMessage('Service context cleared.');
+      } catch (error) {
+        setServiceContextMessage(String(error.message || error), 'error');
+      }
+    }
+
+    async function rearmServiceContext() {
+      try {
+        const response = await fetch('/api/service-context/rearm', {method: 'POST'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Service context could not be re-armed.');
+        renderServiceContext(data);
+        setServiceContextMessage('Service context is ready for the next service.');
+      } catch (error) {
+        setServiceContextMessage(String(error.message || error), 'error');
+      }
     }
 
     function isApplianceOperator() {
@@ -1160,6 +1881,7 @@
     let captionStartNoticeTimer = null;
     let operatorTranslationEditing = false;
     let operatorTranslationSignature = '';
+    let operatorTigrinyaReady = null;
     const operatorLanguages = {{ languages|tojson }};
     const operatorSelectedLanguages = new Set({{ runtime.translation_allowed_languages|list|tojson }});
     Array.from(operatorSelectedLanguages).forEach((code) => {
@@ -1398,9 +2120,9 @@
     function updatePlatformControls({markCustom = false} = {}) {
       const platform = platformChoice();
       const cudaTroubleshooter = document.getElementById('cudaTroubleshooter');
-      if (cudaTroubleshooter) cudaTroubleshooter.hidden = platform !== 'windows';
+      if (cudaTroubleshooter) cudaTroubleshooter.hidden = platform !== 'windows' && platform !== 'linux';
       const cudaStatusGrid = document.getElementById('cudaStatusGrid');
-      if (cudaStatusGrid) cudaStatusGrid.hidden = platform !== 'windows';
+      if (cudaStatusGrid) cudaStatusGrid.hidden = platform !== 'windows' && platform !== 'linux';
       const deviceSelect = document.getElementById('whisperDevice');
       const computeSelect = document.getElementById('whisperComputeType');
       const processorInfo = document.getElementById('processorInfo');
@@ -1450,8 +2172,8 @@
           {value: 'float16', label: 'GPU fast / float16'},
           {value: 'float32', label: 'CPU precise / float32'}
         ];
-        if (processorInfo) processorInfo.dataset.tip = 'Auto uses NVIDIA CUDA when CTranslate2 can access a working system CUDA runtime; otherwise it safely uses CPU.';
-        if (computeInfo) computeInfo.dataset.tip = 'Auto uses float16 on CUDA and int8 on CPU for Faster Whisper.';
+        if (processorInfo) processorInfo.dataset.tip = 'Auto uses NVIDIA CUDA when CTranslate2 can load CUDA 12 cuBLAS and cuDNN 9 from the system or Church Cap .venv; otherwise it safely uses CPU.';
+        if (computeInfo) computeInfo.dataset.tip = 'Auto uses float16 on CUDA and int8 on CPU for Faster Whisper. Install / repair CUDA runtime can add the required libraries locally without changing the NVIDIA driver.';
       } else {
         if (processorInfo) processorInfo.dataset.tip = 'Auto chooses a safe CPU mode on this operating system.';
         if (computeInfo) computeInfo.dataset.tip = 'Auto chooses a safe CPU compute mode.';
@@ -1572,8 +2294,10 @@
         not_detected: 'Not detected',
         usable: 'Usable',
         not_exposed: 'Not exposed',
+        runtime_missing: 'Runtime missing',
         ready: 'Ready',
         missing_dlls: 'Missing DLLs',
+        missing_libraries: 'Missing libraries',
         not_applicable: 'Not applicable',
         unknown: 'Unknown'
       };
@@ -1583,7 +2307,8 @@
     function renderCudaDetails(hardware) {
       const grid = document.getElementById('cudaStatusGrid');
       if (!grid || !hardware) return;
-      grid.hidden = platformChoice() !== 'windows';
+      const platform = platformChoice();
+      grid.hidden = platform !== 'windows' && platform !== 'linux';
       const driver = document.getElementById('cudaDriverStatus');
       const ctranslate = document.getElementById('cudaCtranslateStatus');
       const runtime = document.getElementById('cudaRuntimeStatus');
@@ -1606,11 +2331,11 @@
       if (!result || !cudaRuntime) return;
       const state = cudaRuntime.state || {};
       if (state.status === 'installing') {
-        result.textContent = `CUDA runtime force reinstall is running. Log: ${state.log || cudaRuntime.log || 'logs/cuda-runtime-install.log'}. Restart Church Cap when it finishes.`;
+        result.textContent = `CUDA runtime installation is running. Log: ${state.log || cudaRuntime.log || 'logs/cuda-runtime-install.log'}. Restart Church Cap when it finishes.`;
       } else if (state.status === 'complete') {
-        result.textContent = state.message || 'CUDA runtime force reinstall finished. Restart Church Cap, then check CUDA again.';
+        result.textContent = state.message || 'CUDA runtime installation finished. Restart Church Cap, then check CUDA again.';
       } else if (state.status === 'error') {
-        result.textContent = state.error || 'CUDA runtime force reinstall could not start.';
+        result.textContent = state.error || 'CUDA runtime installation could not start.';
       }
     }
 
@@ -1634,15 +2359,15 @@
 
     async function installCudaRuntime() {
       const result = document.getElementById('cudaResult');
-      if (result) result.textContent = 'Starting CUDA runtime force reinstall…';
+      if (result) result.textContent = 'Starting CUDA runtime installation…';
       const res = await fetch('/api/cuda/install', {method: 'POST'});
       if (res.status === 401) { location.href = '/login'; return; }
       const data = await res.json();
       if (!res.ok || data.status === 'error') {
-        if (result) result.textContent = data.error || 'Could not start CUDA runtime force reinstall.';
+        if (result) result.textContent = data.error || 'Could not start CUDA runtime installation.';
         return;
       }
-      if (result) result.textContent = data.message || 'CUDA runtime force reinstall started. Restart Church Cap after it finishes.';
+      if (result) result.textContent = data.message || 'CUDA runtime installation started. Restart Church Cap after it finishes.';
       renderCudaRuntime(data.cuda_runtime);
       refreshStatus();
     }
@@ -1977,20 +2702,335 @@
       const argos = resources.argos || {};
       const fastCore = resources.ct2small100 || {};
       const core = resources.small100 || {};
+      const tigrinya = resources.opus_tigrinya || {};
       const argosCount = Array.isArray(argos.installed_languages) ? argos.installed_languages.length : 0;
       const fastCoreReady = !!fastCore.status?.ready;
       const coreReady = !!core.status?.ready;
-      summary.textContent = `Recommended package: ${fastCoreReady ? 'installed' : 'not installed'}. Base packages installed: ${argosCount}. Compatibility package: ${coreReady ? 'installed' : 'not installed'}.`;
+      const tigrinyaReady = !!tigrinya.status?.ready;
+      const recommendedBundleReady = fastCoreReady && tigrinyaReady;
+      const tigrinyaReadinessChanged = operatorTigrinyaReady !== tigrinyaReady;
+      operatorTigrinyaReady = tigrinyaReady;
+      summary.textContent = `Recommended language bundle: ${recommendedBundleReady ? 'installed, including Tigrinya' : (fastCoreReady ? 'repair required to add Tigrinya' : 'not installed')}. Base packages installed: ${argosCount}. Compatibility package: ${coreReady ? 'installed' : 'not installed'}.`;
+      if (tigrinyaReadinessChanged) filterOperatorLanguages();
       const install = translation.install || window.CC_TRANSLATION_INSTALL;
       renderTranslationPerformancePrompt(translation, install);
+      const anyTranslationInstall = install?.status === 'installing';
+      document.querySelectorAll('[data-translation-install-button]').forEach((button) => {
+        button.disabled = anyTranslationInstall;
+      });
+      const recommendedInstallButton = document.getElementById('translationRecommendedInstallButton');
+      if (recommendedInstallButton) {
+        const installingRecommended = install?.status === 'installing' && install?.kind === 'ct2small100';
+        recommendedInstallButton.disabled = anyTranslationInstall;
+        recommendedInstallButton.textContent = installingRecommended
+          ? 'Installing Recommended languages…'
+          : (anyTranslationInstall
+            ? 'Wait for current installation…'
+            : (recommendedBundleReady ? 'Repair Recommended package' : 'Install / repair Recommended package'));
+      }
       const installResult = document.getElementById('translationInstallResult');
       if (installResult && install?.status === 'installing') {
-        const label = install.kind === 'ct2small100' ? 'Installing the faster local translation engine' : 'Installing translation resources';
-        installResult.textContent = `${label}. This can take several minutes. Log: ${install.log || 'logs/translation-install.log'}.`;
+        const label = install.kind === 'ct2small100'
+          ? 'Installing the Recommended language bundle'
+          : 'Installing translation resources';
+        installResult.textContent = `${label}. This can take several minutes. Log: ${install.log || 'Church Cap data/logs/translation-install.log'}.`;
       } else if (installResult && install?.status === 'complete') {
         installResult.textContent = install.message || 'Translation install finished.';
       } else if (installResult && install?.status === 'error') {
-        installResult.textContent = install.error || install.message || 'Translation install failed. Check logs/translation-install.log.';
+        installResult.textContent = install.error || install.message || 'Translation install failed. Check the Church Cap data logs folder.';
+      }
+      renderTranslationInstallProgress(install || {});
+    }
+
+    function normaliseInstallPercent(value, fallback = 0) {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : fallback;
+    }
+
+    function installProgressMeta(progress = {}) {
+      const parts = [];
+      const downloaded = Number(progress.downloaded_bytes || 0);
+      const total = Number(progress.total_bytes || 0);
+      if (total > 0) parts.push(`${formatTranslatedAudioBytes(downloaded)} of ${formatTranslatedAudioBytes(total)}`);
+      const itemIndex = Number(progress.item_index || 0);
+      const itemCount = Number(progress.item_count || 0);
+      if (itemCount > 0) parts.push(`Package ${Math.min(itemIndex || 1, itemCount)} of ${itemCount}`);
+      if (progress.indeterminate) parts.push('Current phase timing is estimated');
+      return parts.join(' · ');
+    }
+
+    function renderTranslationInstallProgress(install = {}) {
+      const panel = document.getElementById('translationInstallProgress');
+      const spinner = document.getElementById('translationInstallSpinner');
+      const title = document.getElementById('translationInstallProgressTitle');
+      const percentLabel = document.getElementById('translationInstallProgressPercent');
+      const bar = document.getElementById('translationInstallProgressBar');
+      const detail = document.getElementById('translationInstallProgressText');
+      const meta = document.getElementById('translationInstallProgressMeta');
+      const packages = document.getElementById('translationPackageProgress');
+      if (!panel || !title || !detail || !bar || !percentLabel) return;
+      const state = String(install.status || 'idle');
+      const progress = install.progress || {};
+      const visible = ['installing', 'complete', 'error'].includes(state);
+      panel.hidden = !visible;
+      panel.dataset.state = visible ? state : 'idle';
+      panel.dataset.indeterminate = progress.indeterminate || (state === 'installing' && progress.percent == null) ? 'true' : 'false';
+      if (!visible) return;
+      const percent = state === 'complete' ? 100 : normaliseInstallPercent(progress.percent);
+      bar.style.setProperty('--install-progress', `${percent}%`);
+      percentLabel.textContent = state === 'error' && progress.percent == null ? '—' : `${percent}%`;
+      if (spinner) spinner.hidden = state !== 'installing';
+      if (state === 'installing') {
+        title.textContent = install.kind === 'ct2small100'
+          ? 'Installing Recommended languages'
+          : (install.kind === 'small100' ? 'Installing Compatibility package' : 'Installing Base language packages');
+        detail.textContent = progress.detail || 'Preparing the selected translation resources.';
+      } else if (state === 'complete') {
+        title.textContent = 'Translation installation complete';
+        detail.textContent = progress.detail || install.message || 'The selected translation resources are ready.';
+      } else {
+        title.textContent = 'Translation installation needs attention';
+        detail.textContent = progress.detail || install.error || install.message || 'The installation did not finish.';
+      }
+      const metaCopy = installProgressMeta(progress);
+      if (meta) {
+        meta.hidden = !metaCopy;
+        meta.textContent = metaCopy;
+      }
+      renderInstallerPackageProgress(packages, progress.items);
+    }
+
+    function formatTranslatedAudioBytes(value) {
+      const bytes = Number(value || 0);
+      if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+      if (bytes >= 1000 ** 3) return `${(bytes / (1000 ** 3)).toFixed(1)} GB`;
+      return `${Math.ceil(bytes / (1000 ** 2))} MB`;
+    }
+
+    function updateTranslatedAudioSelectionSummary() {
+      const summary = document.getElementById('translatedAudioSelectionSize');
+      const button = document.getElementById('translatedAudioInstallButton');
+      const selected = [...document.querySelectorAll('#translatedAudioCatalog input[data-package-id]:checked:not(:disabled)')];
+      const selectedIds = new Set(selected.map((input) => input.dataset.packageId));
+      const packages = translatedAudioCatalogState.filter((item) => selectedIds.has(item.id));
+      const downloadBytes = packages.reduce((total, item) => total + Number(item.download_bytes || 0), 0);
+      const installedBytes = packages.reduce((total, item) => total + Number(item.installed_bytes_estimate || 0), 0);
+      if (summary) {
+        summary.textContent = packages.length
+          ? `${packages.length} selected · about ${formatTranslatedAudioBytes(downloadBytes)} download · up to ${formatTranslatedAudioBytes(installedBytes)} installed`
+          : 'No additional language packs selected';
+      }
+      if (button && button.dataset.installing !== 'true') {
+        button.disabled = packages.length === 0 || button.dataset.captionsRunning === 'true';
+      }
+    }
+
+    function selectTranslatedAudioPackages(selected) {
+      document.querySelectorAll('#translatedAudioCatalog input[data-package-id]:not(:disabled)').forEach((input) => {
+        input.checked = !!selected;
+      });
+      updateTranslatedAudioSelectionSummary();
+    }
+
+    function renderTranslatedAudioCatalog(catalog, configuredLanguages, installing, installedPackageIds) {
+      const container = document.getElementById('translatedAudioCatalog');
+      if (!container || !Array.isArray(catalog)) return;
+      translatedAudioCatalogState = catalog;
+      const previous = new Map(
+        [...container.querySelectorAll('input[data-package-id]')].map((input) => [input.dataset.packageId, input.checked])
+      );
+      container.replaceChildren();
+      const installedSet = new Set(configuredLanguages);
+      const installedPackageSet = new Set(Array.isArray(installedPackageIds) ? installedPackageIds : []);
+      catalog.forEach((item) => {
+        const languages = Array.isArray(item.caption_languages) ? item.caption_languages : [];
+        const installed = installedPackageSet.has(item.id) || (
+          !Array.isArray(installedPackageIds) && languages.length > 0 && languages.every((code) => installedSet.has(code))
+        );
+        const row = document.createElement('label');
+        row.className = `spoken-audio-pack${installed ? ' installed' : ''}`;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.dataset.packageId = item.id;
+        input.disabled = installed || installing;
+        input.checked = installed ? false : (previous.has(item.id) ? previous.get(item.id) : true);
+        input.addEventListener('change', updateTranslatedAudioSelectionSummary);
+        const copy = document.createElement('span');
+        copy.className = 'spoken-audio-pack-copy';
+        const heading = document.createElement('span');
+        heading.className = 'spoken-audio-pack-heading';
+        const name = document.createElement('strong');
+        name.textContent = item.label;
+        const size = document.createElement('span');
+        size.className = 'status-pill';
+        size.textContent = installed ? 'Installed' : formatTranslatedAudioBytes(item.download_bytes);
+        heading.append(name, size);
+        const details = document.createElement('small');
+        const captions = languages.map((code) => languageName(code)).join(', ');
+        details.textContent = `${captions} · ${item.license_id}. ${item.notice}`;
+        copy.append(heading, details);
+        row.append(input, copy);
+        container.append(row);
+      });
+      updateTranslatedAudioSelectionSummary();
+    }
+
+    function renderInstallerPackageProgress(container, rawItems) {
+      if (!container) return;
+      const progressItems = Array.isArray(rawItems) ? rawItems : [];
+      container.hidden = progressItems.length === 0;
+      container.replaceChildren();
+      progressItems.forEach((item) => {
+        const itemPercent = normaliseInstallPercent(item.percent, item.state === 'complete' ? 100 : 0);
+        const card = document.createElement('div');
+        card.className = 'installer-package-progress';
+        card.dataset.state = item.state || 'pending';
+        const ring = document.createElement('div');
+        ring.className = 'installer-package-progress-ring';
+        ring.style.setProperty('--package-progress', `${itemPercent}%`);
+        const ringText = document.createElement('span');
+        ringText.textContent = item.state === 'complete' ? '✓' : (item.state === 'error' ? '!' : `${itemPercent}%`);
+        ring.appendChild(ringText);
+        const copy = document.createElement('span');
+        copy.className = 'installer-package-progress-copy';
+        const label = document.createElement('strong');
+        label.textContent = item.label || item.id || 'Language pack';
+        const itemState = document.createElement('small');
+        itemState.textContent = String(item.state || 'pending').replace('-', ' ');
+        copy.append(label, itemState);
+        card.append(ring, copy);
+        container.appendChild(card);
+      });
+    }
+
+    function renderTranslatedAudioInstallProgress(state, message = '', progress = {}) {
+      const panel = document.getElementById('translatedAudioInstallProgress');
+      const spinner = document.getElementById('translatedAudioInstallSpinner');
+      const title = document.getElementById('translatedAudioInstallProgressTitle');
+      const percentLabel = document.getElementById('translatedAudioInstallProgressPercent');
+      const bar = document.getElementById('translatedAudioInstallProgressBar');
+      const detail = document.getElementById('translatedAudioInstallProgressText');
+      const meta = document.getElementById('translatedAudioInstallProgressMeta');
+      const packages = document.getElementById('translatedAudioPackageProgress');
+      if (!panel || !title || !detail || !percentLabel || !bar) return;
+      const visible = ['starting', 'installing', 'complete', 'removed', 'error'].includes(state);
+      panel.hidden = !visible;
+      panel.dataset.state = visible ? state : 'idle';
+      panel.dataset.indeterminate = progress.indeterminate || (['starting', 'installing'].includes(state) && progress.percent == null) ? 'true' : 'false';
+      if (spinner) spinner.hidden = !['starting', 'installing'].includes(state);
+      if (!visible) return;
+      const percent = ['complete', 'removed'].includes(state) ? 100 : normaliseInstallPercent(progress.percent);
+      bar.style.setProperty('--install-progress', `${percent}%`);
+      percentLabel.textContent = state === 'error' && progress.percent == null ? '—' : `${percent}%`;
+      if (state === 'starting') {
+        title.textContent = 'Starting spoken-language installation…';
+        detail.textContent = message || 'Church Cap is preparing the selected voice packs.';
+      } else if (state === 'installing') {
+        title.textContent = 'Installing selected spoken languages…';
+        detail.textContent = message || 'Downloading and verifying local voice packs. Keep Church Cap open; this may take several minutes.';
+      } else if (state === 'complete') {
+        title.textContent = 'Spoken-language installation complete';
+        detail.textContent = message || 'The installed languages are ready for visitors to use through the Listen control.';
+      } else if (state === 'removed') {
+        title.textContent = 'Spoken-language models removed';
+        detail.textContent = message || 'The selected voice models were removed and can be downloaded again later.';
+      } else {
+        title.textContent = 'Spoken-language installation needs attention';
+        detail.textContent = message || 'The installation did not finish. Review the message above and try again.';
+      }
+      if (progress.detail && ['starting', 'installing'].includes(state)) detail.textContent = progress.detail;
+      const metaCopy = installProgressMeta(progress);
+      if (meta) {
+        meta.hidden = !metaCopy;
+        meta.textContent = metaCopy;
+      }
+      renderInstallerPackageProgress(packages, progress.items);
+    }
+
+    function renderTranslatedAudio(audio, captionsRunning = false) {
+      if (!audio) return;
+      const pill = document.getElementById('translatedAudioStatusPill');
+      const status = document.getElementById('translatedAudioStatus');
+      const button = document.getElementById('translatedAudioInstallButton');
+      const install = audio.install || {};
+      const operatorEnabled = audio.operator_enabled !== false;
+      const languages = Array.isArray(audio.available_languages) ? audio.available_languages : [];
+      const configuredLanguages = Object.keys(audio.configured_voices || {});
+      const installed = audio.runtime_available === true && configuredLanguages.length > 0;
+      const ready = operatorEnabled && audio.enabled === true && languages.length > 0;
+      const installing = install.status === 'installing';
+      translatedAudioCaptionsRunning = captionsRunning;
+      translatedAudioInstalledPackageIds = Array.isArray(audio.installed_package_ids) ? audio.installed_package_ids : [];
+      if (button) button.dataset.captionsRunning = captionsRunning ? 'true' : 'false';
+      const catalog = Array.isArray(install.catalog) ? install.catalog : translatedAudioCatalogState;
+      renderTranslatedAudioCatalog(catalog, configuredLanguages, installing, audio.installed_package_ids);
+      const installedPackageSet = new Set(translatedAudioInstalledPackageIds);
+      const allInstalled = catalog.length > 0 && catalog.every((item) => installedPackageSet.has(item.id));
+      if (pill) pill.textContent = installing ? 'Installing' : (!operatorEnabled && installed ? 'Off' : (ready ? 'Ready' : 'Not installed'));
+      if (status) {
+        if (installing) {
+          status.textContent = `Installation is running. This can take several minutes. Log: ${install.log || 'logs/translated-audio-install.log'}.`;
+        } else if (captionsRunning) {
+          status.textContent = 'Stop live captions before installing spoken audio. This protects caption performance and service stability.';
+        } else if (translatedAudioRemovalNotice) {
+          status.textContent = translatedAudioRemovalNotice;
+        } else if (install.status === 'error') {
+          status.textContent = install.error || install.message || 'Installation failed. Check logs/translated-audio-install.log.';
+        } else if (!operatorEnabled && installed) {
+          status.textContent = 'Spoken-language packs are installed, but spoken translation is switched off on the Languages page.';
+        } else if (ready) {
+          const names = languages.map((code) => languageName(code));
+          status.textContent = `Ready for ${names.join(', ')}. Visitors can select Listen after choosing one of these translated languages.`;
+        } else if (!audio.runtime_available) {
+          status.textContent = 'The local speech runtime and selected voice packs are not ready. Install them while captions are stopped.';
+        } else if (audio.manifest_error) {
+          status.textContent = `The voice configuration could not be loaded: ${audio.manifest_error}`;
+        } else {
+          status.textContent = 'No reviewed spoken-language packs are installed yet.';
+        }
+      }
+      if (installing) {
+        const selectedCount = Array.isArray(install.package_ids) ? install.package_ids.length : 0;
+        const selectedCopy = selectedCount ? `${selectedCount} selected language pack${selectedCount === 1 ? ' is' : 's are'} being downloaded, verified, and installed.` : '';
+        renderTranslatedAudioInstallProgress('installing', `${selectedCopy}${selectedCopy ? ' ' : ''}Keep Church Cap open. Log: ${install.log || 'logs/translated-audio-install.log'}.`, install.progress || {});
+      } else if (captionsRunning) {
+        renderTranslatedAudioInstallProgress('error', 'Live captions are running. Stop captions first, then return here to install the selected spoken-language packs.');
+      } else if (install.status === 'complete') {
+        renderTranslatedAudioInstallProgress('complete', install.message || 'The selected spoken languages are ready.', install.progress || {});
+      } else if (install.status === 'error') {
+        renderTranslatedAudioInstallProgress('error', install.error || install.message || 'Installation failed. Check logs/translated-audio-install.log.', install.progress || {});
+      } else {
+        renderTranslatedAudioInstallProgress('idle');
+      }
+      if (button) {
+        button.dataset.installing = installing ? 'true' : 'false';
+        button.disabled = installing || captionsRunning;
+        button.hidden = allInstalled && install.status !== 'error';
+        button.textContent = installing
+          ? 'Installing…'
+          : (captionsRunning ? 'Stop captions to install' : (install.status === 'error' ? 'Retry selected installation' : 'Install selected languages'));
+        if (!installing && !captionsRunning) updateTranslatedAudioSelectionSummary();
+      }
+      for (const removeButton of document.querySelectorAll('#translatedAudioRemoveButton, #diagnosticsTranslatedAudioRemoveButton')) {
+        removeButton.disabled = installing || captionsRunning || translatedAudioInstalledPackageIds.length === 0;
+        removeButton.textContent = captionsRunning
+          ? 'Stop captions to remove models'
+          : (translatedAudioInstalledPackageIds.length ? 'Remove installed languages' : 'No installed languages to remove');
+      }
+    }
+
+    function renderTranslatedAudioSetting(audio) {
+      if (!audio) return;
+      const toggle = document.getElementById('translatedAudioEnabled');
+      const pill = document.getElementById('languageTranslatedAudioStatus');
+      const operatorEnabled = audio.operator_enabled !== false;
+      const configured = Object.keys(audio.configured_voices || {}).length > 0;
+      if (toggle && !toggle.disabled) toggle.checked = operatorEnabled;
+      if (pill) {
+        if (!operatorEnabled) pill.textContent = 'Off';
+        else if (audio.enabled === true) pill.textContent = 'On';
+        else if (!audio.runtime_available || !configured) pill.textContent = 'Needs setup';
+        else pill.textContent = 'Unavailable';
       }
     }
 
@@ -2081,8 +3121,10 @@
       const result = document.getElementById('translationInstallResult');
       if (result) {
         result.textContent = kind === 'ct2small100'
-          ? 'Starting faster local translation install. Allow about 2 GB of temporary free space while the model is downloaded and converted…'
-          : (kind === 'small100' ? 'Starting Compatibility package / PyTorch SMaLL-100 install (about 1.2 GB)…' : 'Starting Base package / Argos Translate install; size varies by language packs…');
+          ? 'Installing the Recommended language bundle.'
+          : (kind === 'small100'
+            ? 'Starting Compatibility package / PyTorch SMaLL-100 install (about 1.2 GB)…'
+            : 'Starting Base package / Argos Translate install; size varies by language packs…');
       }
       const res = await fetch('/api/translation/install', {
         method: 'POST',
@@ -2095,9 +3137,190 @@
         if (result) result.textContent = data.error || 'Could not start translation install.';
         return;
       }
-      if (result) result.textContent = `${data.message || 'Translation install started.'} Log: ${data.install?.log || 'logs/translation-install.log'}.`;
+      if (result) result.textContent = `${data.message || 'Translation install started.'} Log: ${data.install?.log || 'Church Cap data/logs/translation-install.log'}.`;
       renderTranslationPerformancePrompt({...(window.CC_LAST_TRANSLATION || {}), install: data.install}, data.install);
+      renderTranslationInstallProgress(data.install || {});
       refreshStatus();
+    }
+
+    async function installTranslatedAudio() {
+      const status = document.getElementById('translatedAudioStatus');
+      const button = document.getElementById('translatedAudioInstallButton');
+      if (button?.dataset.captionsRunning === 'true') {
+        const message = 'Live captions are running. Stop captions first, then install the selected spoken-language packs.';
+        if (status) status.textContent = message;
+        renderTranslatedAudioInstallProgress('error', message);
+        return;
+      }
+      const packages = [...document.querySelectorAll('#translatedAudioCatalog input[data-package-id]:checked:not(:disabled)')]
+        .map((input) => input.dataset.packageId);
+      if (!packages.length) {
+        if (status) status.textContent = 'Select at least one language pack that is not already installed.';
+        renderTranslatedAudioInstallProgress('error', 'Select at least one language pack that is not already installed.');
+        return;
+      }
+      if (status) status.textContent = 'Starting the optional local speech runtime and selected-language installation…';
+      translatedAudioRemovalNotice = '';
+      renderTranslatedAudioInstallProgress('starting', `Preparing ${packages.length} selected language pack${packages.length === 1 ? '' : 's'}. Internet access is required.`);
+      if (button) {
+        button.dataset.installing = 'true';
+        button.disabled = true;
+        button.textContent = 'Starting…';
+      }
+      try {
+        const res = await fetch('/api/translated-audio/install', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({packages})
+        });
+        if (res.status === 401) { location.href = '/login'; return; }
+        const responseType = res.headers.get('content-type') || '';
+        const data = responseType.includes('application/json')
+          ? await res.json()
+          : {status: 'error', error: (await res.text()).trim() || `Church Cap returned HTTP ${res.status}.`};
+        if (!res.ok || data.status === 'error') {
+          const message = data.error || 'Could not start translated-audio installation.';
+          if (status) status.textContent = message;
+          renderTranslatedAudioInstallProgress('error', message);
+          if (button) {
+            button.dataset.installing = 'false';
+            button.disabled = false;
+            button.textContent = 'Retry selected installation';
+          }
+          return;
+        }
+        const message = `${data.message || 'Installation started.'} Log: ${data.install?.log || 'logs/translated-audio-install.log'}.`;
+        if (status) status.textContent = message;
+        renderTranslatedAudioInstallProgress('installing', message, data.install?.progress || {});
+        await refreshStatus();
+      } catch (error) {
+        const message = `Could not start translated-audio installation: ${error}`;
+        if (status) status.textContent = message;
+        renderTranslatedAudioInstallProgress('error', message);
+        if (button) {
+          button.dataset.installing = 'false';
+          button.disabled = false;
+          button.textContent = 'Retry selected installation';
+        }
+      }
+    }
+
+    function updateTranslatedAudioRemoveSummary() {
+      const selected = [...document.querySelectorAll('#translatedAudioRemoveList input[data-package-id]:checked')];
+      const selectedIds = new Set(selected.map((input) => input.dataset.packageId));
+      const packages = translatedAudioCatalogState.filter((item) => selectedIds.has(item.id));
+      const bytes = packages.reduce((total, item) => total + Number(item.installed_bytes_estimate || 0), 0);
+      const summary = document.getElementById('translatedAudioRemoveSummary');
+      const confirm = document.getElementById('translatedAudioRemoveConfirm');
+      if (summary) summary.textContent = packages.length
+        ? `${packages.length} model pack${packages.length === 1 ? '' : 's'} selected · up to ${formatTranslatedAudioBytes(bytes)} of model storage will be removed.`
+        : 'Nothing selected.';
+      if (confirm) confirm.disabled = packages.length === 0;
+    }
+
+    function openTranslatedAudioRemoveDialog() {
+      const dialog = document.getElementById('translatedAudioRemoveDialog');
+      const list = document.getElementById('translatedAudioRemoveList');
+      const error = document.getElementById('translatedAudioRemoveError');
+      const confirm = document.getElementById('translatedAudioRemoveConfirm');
+      const status = document.getElementById('translatedAudioStatus');
+      if (translatedAudioCaptionsRunning) {
+        if (status) status.textContent = 'Stop live captions before removing spoken-language models.';
+        return;
+      }
+      if (!dialog?.showModal || !list) {
+        if (status) status.textContent = 'This browser cannot open the spoken-language removal menu.';
+        return;
+      }
+      const installed = new Set(translatedAudioInstalledPackageIds);
+      list.replaceChildren();
+      translatedAudioCatalogState.filter((item) => installed.has(item.id)).forEach((item) => {
+        const label = document.createElement('label');
+        label.className = 'storage-cleanup-option';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.packageId = item.id;
+        checkbox.checked = true;
+        checkbox.addEventListener('change', updateTranslatedAudioRemoveSummary);
+        const copy = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = `${item.label} · up to ${formatTranslatedAudioBytes(item.installed_bytes_estimate)}`;
+        const description = document.createElement('small');
+        const captions = (item.caption_languages || []).map((code) => languageName(code)).join(', ');
+        description.textContent = `${captions} · ${item.license_id}. The text-caption language is not removed.`;
+        copy.append(title, description);
+        label.append(checkbox, copy);
+        list.append(label);
+      });
+      if (error) { error.hidden = true; error.textContent = ''; }
+      if (confirm) confirm.textContent = 'Remove selected models';
+      updateTranslatedAudioRemoveSummary();
+      dialog.showModal();
+    }
+
+    async function confirmTranslatedAudioRemoval() {
+      const dialog = document.getElementById('translatedAudioRemoveDialog');
+      const confirm = document.getElementById('translatedAudioRemoveConfirm');
+      const error = document.getElementById('translatedAudioRemoveError');
+      const packages = [...document.querySelectorAll('#translatedAudioRemoveList input[data-package-id]:checked')]
+        .map((input) => input.dataset.packageId);
+      if (!packages.length || !confirm || !error) return;
+      confirm.disabled = true;
+      confirm.textContent = 'Removing…';
+      error.hidden = true;
+      try {
+        const response = await fetch('/api/translated-audio/uninstall', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({confirmed: true, packages})
+        });
+        if (response.status === 401) { location.href = '/login'; return; }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not remove the selected spoken-language models.');
+        translatedAudioRemovalNotice = `${data.message || 'Selected spoken-language models removed'} Reclaimed ${formatTranslatedAudioBytes(data.reclaimed_bytes)}.`;
+        dialog.close();
+        renderTranslatedAudio({...data.translated_audio, install: data.install}, false);
+        renderTranslatedAudioInstallProgress('removed', translatedAudioRemovalNotice);
+        await refreshStorageUse(true);
+      } catch (caught) {
+        error.textContent = caught.message || 'Could not remove the selected spoken-language models.';
+        error.hidden = false;
+        confirm.disabled = false;
+        confirm.textContent = 'Try again';
+      }
+    }
+
+    async function saveTranslatedAudioSetting(toggle) {
+      if (!toggle) return;
+      const result = document.getElementById('languageTranslatedAudioResult');
+      const requested = !!toggle.checked;
+      toggle.disabled = true;
+      if (result) result.textContent = requested ? 'Turning translated speech on…' : 'Turning translated speech off…';
+      try {
+        const res = await fetch('/api/translated-audio/settings', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({enabled: requested}),
+        });
+        if (res.status === 401) { location.href = '/login'; return; }
+        const data = await res.json();
+        if (!res.ok || data.status === 'error') {
+          toggle.checked = !requested;
+          if (result) result.textContent = data.error || 'Unable to save translated speech setting.';
+          return;
+        }
+        renderTranslatedAudioSetting(data.translated_audio);
+        renderTranslatedAudio({...data.translated_audio, install: {status: 'idle'}});
+        if (result) result.textContent = requested
+          ? 'Translated speech is on. Supported audience languages will show headphones and Listen.'
+          : 'Translated speech is off. Headphones and Listen are hidden; translated text remains available.';
+        refreshStatus();
+      } catch (error) {
+        toggle.checked = !requested;
+        if (result) result.textContent = `Unable to save translated speech setting: ${error}`;
+      } finally {
+        toggle.disabled = false;
+      }
     }
 
     async function useFasterTranslationMode() {
@@ -2160,6 +3383,7 @@
         const res = await fetch(path, { method: 'POST' });
         if (res.status === 401) { location.href = '/login'; return; }
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || data.detail || 'The action could not be completed.');
         if (result && !actionLabel?.notice) result.textContent = JSON.stringify(data);
         if (path === '/api/start' && data.status === 'already_running') {
           setCaptionStartNotice(actionLabel.already, {tone: 'success', clearAfterMs: 1800});
@@ -2226,45 +3450,70 @@
       refreshStatus();
     }
 
+    function setTranslationSaveResult(message) {
+      for (const result of document.querySelectorAll('#translationPrimaryResult, #translationResult')) {
+        result.textContent = message;
+      }
+    }
+
+    function setTranslationSaveButtonsBusy(busy) {
+      for (const button of document.querySelectorAll('#translationPrimarySave, #translationAdvancedSave')) {
+        button.disabled = busy;
+        button.textContent = busy ? 'Saving…' : 'Save language settings';
+      }
+    }
+
     async function saveTranslationSettings() {
       if (!(await ensureCpuTranslationAcknowledged())) return;
-      const result = document.getElementById('translationResult');
       const providerSelect = document.getElementById('translationProvider');
       const provider = providerSelect?.value || 'disabled';
       operatorSelectedLanguages.add('en');
-      const selected = Array.from(operatorSelectedLanguages);
+      const tigrinyaReady = window.CC_LAST_TRANSLATION?.resources?.opus_tigrinya?.status?.ready === true;
+      const selected = Array.from(operatorSelectedLanguages).filter((code) => code !== 'ti' || tigrinyaReady);
+      if (!tigrinyaReady) operatorSelectedLanguages.delete('ti');
       const selectedTranslated = selected.filter((code) => code !== 'en');
       if (provider === 'disabled' && selectedTranslated.length) {
-        if (result) result.textContent = 'Translation mode is Off. Choose Recommended, Base, Compatibility, or Auto before saving selected translated languages, or clear the translated-language list to leave captions in English only.';
+        setTranslationSaveResult('Translation mode is Off. Choose Recommended, Base, Compatibility, or Auto before saving selected translated languages, or clear the translated-language list to leave captions in English only.');
         providerSelect?.focus();
         return;
       }
-      const res = await fetch('/api/translation', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          translation_enabled: provider !== 'disabled',
-          translation_provider: provider,
-          translation_language_policy: document.getElementById('translationLanguagePolicy')?.value || 'automatic',
-          translation_priority_mode: document.getElementById('translationPriorityMode')?.value || 'most_viewers',
-          translation_timing_mode: document.getElementById('translationTimingMode')?.value || 'responsive',
-          translation_language_requests_enabled: document.getElementById('translationLanguageRequestsEnabled')?.checked !== false,
-          translation_allowed_languages: selected,
-          translation_max_active_languages: Number(document.getElementById('translationMax').value)
-        })
-      });
-      if (res.status === 401) { location.href = '/login'; return; }
-      const data = await res.json();
-      if (!res.ok || data.status === 'error') {
-        if (result) result.textContent = data.error || 'Unable to save language settings.';
-        return;
+      setTranslationSaveButtonsBusy(true);
+      setTranslationSaveResult('Saving language settings…');
+      try {
+        const res = await fetch('/api/translation', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            translation_enabled: provider !== 'disabled',
+            translation_provider: provider,
+            translation_language_policy: document.getElementById('translationLanguagePolicy')?.value || 'automatic',
+            translation_priority_mode: document.getElementById('translationPriorityMode')?.value || 'most_viewers',
+            translation_timing_mode: document.getElementById('translationTimingMode')?.value || 'responsive',
+            translation_language_requests_enabled: document.getElementById('translationLanguageRequestsEnabled')?.checked !== false,
+            translation_allowed_languages: selected,
+            translation_max_active_languages: Number(document.getElementById('translationMax').value)
+          })
+        });
+        if (res.status === 401) { location.href = '/login'; return; }
+        const responseType = res.headers.get('content-type') || '';
+        const data = responseType.includes('application/json')
+          ? await res.json()
+          : {status: 'error', error: (await res.text()).trim() || `Church Cap returned HTTP ${res.status}.`};
+        if (!res.ok || data.status === 'error') {
+          setTranslationSaveResult(data.error || 'Unable to save language settings.');
+          return;
+        }
+        setTranslationSaveResult(`Saved. Translation: ${data.enabled ? 'on' : 'off'}. Mode: ${data.provider}. Maximum active languages: ${data.max_active_languages}.`);
+        operatorTranslationEditing = false;
+        operatorTranslationSignature = '';
+        syncTranslationModeCopy();
+        renderTranslationResources(data);
+        await refreshStatus();
+      } catch (error) {
+        setTranslationSaveResult(`Unable to save language settings: ${error?.message || error}`);
+      } finally {
+        setTranslationSaveButtonsBusy(false);
       }
-      if (result) result.textContent = `Saved. Enabled: ${data.enabled}. Provider: ${data.provider}. Max active languages: ${data.max_active_languages}. ${data.provider_status?.message || ''}`;
-      operatorTranslationEditing = false;
-      operatorTranslationSignature = '';
-      syncTranslationModeCopy();
-      renderTranslationResources(data);
-      refreshStatus();
     }
 
     async function savePrivacySettings() {
@@ -2404,6 +3653,8 @@
       for (const language of matches) {
         const code = String(language.code || '').toLowerCase();
         const codeLabel = code.toUpperCase();
+        const tigrinyaNeedsInstall = code === 'ti' && window.CC_LAST_TRANSLATION?.resources?.opus_tigrinya?.status?.ready !== true;
+        if (tigrinyaNeedsInstall) operatorSelectedLanguages.delete(code);
         const selected = code === 'en' || operatorSelectedLanguages.has(code);
         const label = document.createElement('label');
         label.className = 'language-toggle premium-language-toggle';
@@ -2416,7 +3667,16 @@
         input.name = 'translationLang';
         input.value = code;
         input.checked = selected;
-        input.disabled = code === 'en';
+        input.disabled = code === 'en' || tigrinyaNeedsInstall;
+        if (tigrinyaNeedsInstall) {
+          label.setAttribute('aria-disabled', 'true');
+          label.title = 'Install or repair the Recommended package before selecting Tigrinya.';
+          label.addEventListener('click', (event) => {
+            event.preventDefault();
+            setTranslationSaveResult('Tigrinya is not ready yet. Select Install / repair Recommended package, wait for its local model check to pass, then select Tigrinya.');
+            document.getElementById('translationRecommendedInstallButton')?.focus();
+          });
+        }
         input.addEventListener('change', () => {
           if (input.checked) operatorSelectedLanguages.add(code);
           else operatorSelectedLanguages.delete(code);
@@ -2433,16 +3693,8 @@
         const copyWrap = document.createElement('span');
         copyWrap.className = 'language-toggle-label';
         const marker = document.createElement('span');
-        const flagText = String(language.flag || '').trim();
-        marker.dataset.code = codeLabel;
         marker.title = `${language.name || language.native || codeLabel} · ${codeLabel}`;
-        if (flagText && flagText !== '🌐') {
-          marker.className = 'language-flag-chip operator-language-code';
-          marker.textContent = flagText;
-        } else {
-          marker.className = 'language-code-badge operator-language-code';
-          marker.textContent = codeLabel.slice(0, 3);
-        }
+        renderOperatorLanguageFlag(marker, language, codeLabel, 'operator-language-code');
 
         const text = document.createElement('span');
         text.className = 'language-toggle-copy';
@@ -2451,7 +3703,9 @@
         title.textContent = language.name || language.native || codeLabel;
         const meta = document.createElement('small');
         meta.dir = 'auto';
-        meta.textContent = language.native && language.native !== language.name ? `${language.native} · ${codeLabel}` : codeLabel;
+        meta.textContent = tigrinyaNeedsInstall
+          ? `${language.native || 'ትግርኛ'} · ${codeLabel} · Included with the Recommended package; install or repair that package first`
+          : (language.native && language.native !== language.name ? `${language.native} · ${codeLabel}` : codeLabel);
         text.append(title, meta);
         copyWrap.append(marker, text);
         label.append(input, slider, copyWrap);
@@ -2468,9 +3722,10 @@
       operatorSelectedLanguages.clear();
       operatorSelectedLanguages.add('en');
       if (checked) {
+        const tigrinyaReady = window.CC_LAST_TRANSLATION?.resources?.opus_tigrinya?.status?.ready === true;
         operatorLanguages.forEach((language) => {
           const code = String(language.code || '').toLowerCase();
-          if (code) operatorSelectedLanguages.add(code);
+          if (code && (code !== 'ti' || tigrinyaReady)) operatorSelectedLanguages.add(code);
         });
       }
       operatorTranslationEditing = true;
@@ -2971,12 +4226,44 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
       return lang?.name || code.toUpperCase();
     }
 
+    function languageFlagCountryCode(language) {
+      const provided = String(language?.flag_code || '').trim().toLowerCase();
+      if (/^[a-z]{2}$/.test(provided)) return provided;
+      const points = [...String(language?.flag || '').trim()].map(character => character.codePointAt(0));
+      const regionalA = 0x1F1E6;
+      if (points.length !== 2 || points.some(point => point < regionalA || point > 0x1F1FF)) return '';
+      return points.map(point => String.fromCharCode(97 + point - regionalA)).join('');
+    }
+
+    function renderOperatorLanguageFlag(element, language, label, extraClass = '') {
+      const flagCode = languageFlagCountryCode(language);
+      const codeLabel = String(label || '').slice(0, 3).toUpperCase();
+      element.replaceChildren();
+      element.dataset.code = codeLabel;
+      element.className = `${flagCode ? 'language-flag-chip' : 'language-code-badge'} ${extraClass}`.trim();
+      if (!flagCode) {
+        element.textContent = codeLabel;
+        return;
+      }
+      const image = document.createElement('img');
+      image.src = `/static/flags/4x3/${flagCode}.svg`;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.addEventListener('error', () => {
+        element.replaceChildren(codeLabel);
+        element.classList.remove('language-flag-chip');
+        element.classList.add('language-code-badge');
+      }, {once: true});
+      element.appendChild(image);
+    }
+
     function languageFlagChip(code) {
       const lang = languageForCode(code);
       const label = String(code || '').slice(0, 3).toUpperCase();
-      const flag = String(lang?.flag || '').trim();
-      if (!flag || flag === '🌐') return `<span class="language-code-badge table-language-flag">${label}</span>`;
-      return `<span class="language-flag-chip table-language-flag" data-code="${label}" title="${languageName(code)} · ${label}">${flag}</span>`;
+      const flagCode = languageFlagCountryCode(lang);
+      if (!flagCode) return `<span class="language-code-badge table-language-flag">${label}</span>`;
+      return `<span class="language-flag-chip table-language-flag" data-code="${label}" title="${languageName(code)} · ${label}"><img src="/static/flags/4x3/${flagCode}.svg" alt="" loading="lazy" decoding="async"></span>`;
     }
 
     function renderViewerLanguageTable(translationState) {
@@ -3006,6 +4293,7 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
         const res = await fetch('/api/status');
         if (res.status === 401) { location.href = '/login'; return; }
         const data = await res.json();
+        renderServiceContext(data.service_context || {});
         const measured = data.last_service_metrics || {};
         const measuredSummary = document.getElementById('diagnosticsServiceSummary');
         if (measuredSummary) {
@@ -3043,6 +4331,11 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
         runStatusPanel('viewer languages', () => renderViewerLanguageTable(data.translation));
         window.CC_LAST_TRANSLATION = data.translation || null;
         runStatusPanel('translation resources', () => renderTranslationResources({...data.translation, install: data.translation_install}));
+        runStatusPanel('translated audio', () => renderTranslatedAudio(
+          data.translated_audio,
+          data.performance_locked === true || ['listening', 'sensitive'].includes(String(data.status || '').toLowerCase())
+        ));
+        runStatusPanel('translated audio setting', () => renderTranslatedAudioSetting(data.translated_audio));
         runStatusPanel('translation capacity', () => renderTranslationCapacityWarning(data));
         runStatusPanel('translation controls', () => syncOperatorTranslationControls(data.translation));
         runStatusPanel('language requests', () => renderLanguageRequests(data.translation));
@@ -3057,7 +4350,7 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
         if (audioPercent) audioPercent.textContent = pct + '%';
         const audioInputWarning = document.getElementById('audioInputWarning');
         if (audioInputWarning) {
-          const warning = String(data.metrics?.audio_input_warning || '');
+          const warning = String(data.metrics?.audio_input_warning || data.metrics?.audio_recovery_message || '');
           audioInputWarning.textContent = warning;
           audioInputWarning.classList.toggle('visible', Boolean(warning));
           audioInputWarning.hidden = !warning;
@@ -3165,12 +4458,12 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
 
     function formatStorageBytes(value) {
       const bytes = Math.max(0, Number(value) || 0);
-      if (bytes < 1024) return `${Math.round(bytes)} B`;
+      if (bytes < 1000) return `${Math.round(bytes)} B`;
       const units = ['KB', 'MB', 'GB', 'TB'];
-      let amount = bytes / 1024;
+      let amount = bytes / 1000;
       let unit = units[0];
-      for (let index = 1; index < units.length && amount >= 1024; index += 1) {
-        amount /= 1024;
+      for (let index = 1; index < units.length && amount >= 1000; index += 1) {
+        amount /= 1000;
         unit = units[index];
       }
       return `${amount >= 10 ? amount.toFixed(0) : amount.toFixed(1)} ${unit}`;
@@ -3212,6 +4505,59 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
         ? `${formatStorageBytes(reclaimable)} can be reviewed. Nothing is removed automatically.`
         : 'No unused downloads or archived logs are currently available to clear.';
       if (cleanup) cleanup.disabled = !storageCleanupCandidates.length;
+      renderDiagnosticsSpokenAudioStorage(storage?.spoken_audio);
+    }
+
+    function renderDiagnosticsSpokenAudioStorage(spokenAudio) {
+      const total = document.getElementById('diagnosticsSpokenAudioTotal');
+      const list = document.getElementById('diagnosticsSpokenAudioList');
+      const remove = document.getElementById('diagnosticsTranslatedAudioRemoveButton');
+      const packages = Array.isArray(spokenAudio?.packages) ? spokenAudio.packages : [];
+      if (total) total.textContent = spokenAudio?.error ? 'Check required' : formatStorageBytes(spokenAudio?.total_bytes);
+      if (list) {
+        list.replaceChildren();
+        if (spokenAudio?.error) {
+          const message = document.createElement('p');
+          message.className = 'muted small-result';
+          message.textContent = spokenAudio.error;
+          list.appendChild(message);
+        } else if (!packages.length) {
+          const message = document.createElement('p');
+          message.className = 'muted small-result';
+          message.textContent = 'No reviewed spoken-language models are currently installed.';
+          list.appendChild(message);
+        } else {
+          const maximum = Math.max(1, ...packages.map((item) => Number(item.bytes) || 0));
+          for (const item of packages) {
+            const row = document.createElement('div');
+            row.className = 'storage-category-row';
+            const heading = document.createElement('div');
+            heading.className = 'storage-category-heading';
+            const label = document.createElement('strong');
+            label.textContent = item.label;
+            const size = document.createElement('span');
+            size.textContent = formatStorageBytes(item.bytes);
+            heading.append(label, size);
+            const meter = document.createElement('div');
+            meter.className = 'storage-meter';
+            const fill = document.createElement('span');
+            fill.style.width = `${Math.max(1, Math.round(((Number(item.bytes) || 0) / maximum) * 100))}%`;
+            meter.appendChild(fill);
+            const description = document.createElement('small');
+            const languages = (item.caption_languages || []).map((code) => languageName(code)).join(', ');
+            description.textContent = `${languages} · ${item.license_id}`;
+            row.append(heading, meter, description);
+            list.appendChild(row);
+          }
+        }
+      }
+      if (!spokenAudio?.error) translatedAudioInstalledPackageIds = packages.map((item) => item.id);
+      if (remove) {
+        remove.disabled = translatedAudioCaptionsRunning || packages.length === 0;
+        remove.textContent = translatedAudioCaptionsRunning
+          ? 'Stop captions to remove models'
+          : (packages.length ? 'Remove installed languages' : 'No installed languages to remove');
+      }
     }
 
     async function refreshStorageUse(force = false) {
@@ -3347,9 +4693,16 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
     document.getElementById('cpuTranslationCancelButton')?.addEventListener('click', () => resolveCpuTranslationPrompt(false));
     document.getElementById('resetServiceMeasurementsConfirm')?.addEventListener('click', confirmResetServiceMeasurements);
     document.getElementById('storageCleanupConfirm')?.addEventListener('click', confirmStorageCleanup);
+    document.getElementById('translatedAudioRemoveConfirm')?.addEventListener('click', confirmTranslatedAudioRemoval);
 
     document.querySelectorAll('.nav-button[data-section]').forEach((button) => {
-      button.addEventListener('click', () => showOperatorSection(button.dataset.section));
+      button.addEventListener('click', () => showOperatorSection(button.dataset.section, button.dataset.subsection || ''));
+    });
+    document.querySelectorAll('.nav-submenu-button[data-section]').forEach((button) => {
+      button.addEventListener('click', () => showOperatorSection(button.dataset.section, button.dataset.subsection));
+    });
+    document.querySelectorAll('.nav-parent-button[data-menu-category]').forEach((button) => {
+      button.addEventListener('click', () => toggleNavGroup(button.dataset.menuCategory));
     });
     const sidebarToggle = document.getElementById('sidebarToggle');
     if (sidebarToggle) sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!document.body.classList.contains('operator-sidebar-collapsed')));
@@ -3366,7 +4719,8 @@ ${copy.message}`)) window.location.href = applianceTargetUrl;
     applyTranslationCapabilityLimits();
     syncTranslationModeCopy();
     const initialSection = window.location.hash ? window.location.hash.slice(1) : localStorage.getItem('operatorSection');
-    showOperatorSection(initialSection || 'dashboard');
+    const initialSubsection = window.location.hash ? '' : localStorage.getItem('operatorSubsection');
+    showOperatorSection(initialSection || 'dashboard', initialSubsection || '');
     document.getElementById('translationMaxSlider')?.addEventListener('input', (event) => {
       operatorTranslationEditing = true;
       syncTranslationMax(event.target);

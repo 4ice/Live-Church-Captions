@@ -29,6 +29,7 @@ from app.metrics import (
 from app.models import CaptionSegment, RecognitionSpan
 from app.text_cleanup import clean_caption_text, collapse_repeated_phrase
 from app.transcription.base import Transcriber
+from app.transcription.audio_watchdog import AudioStreamWatchdog
 from app.transcription.audio_input import audio_input_health, input_default_sample_rate, resample_mono
 from app.transcription.streaming_words import (
     IncompleteEdgeGuard,
@@ -39,7 +40,7 @@ from app.transcription.streaming_words import (
 )
 
 
-class WhisperLiveTranscriber(Transcriber):
+class WhisperLiveTranscriber(AudioStreamWatchdog, Transcriber):
     def __init__(
         self,
         model_name: str = "base.en",
@@ -90,6 +91,7 @@ class WhisperLiveTranscriber(Transcriber):
         self._stream: sd.InputStream | None = None
         self._stable_candidate = ""
         self._stable_count = 0
+        self._initialise_audio_watchdog()
         self._edge_guard.reset()
         update_metrics(
             model_name=self.model_name,
@@ -147,6 +149,7 @@ class WhisperLiveTranscriber(Transcriber):
         rms = float(np.sqrt(np.mean(np.square(audio)))) if audio.size else 0.0
         peak = float(np.max(np.abs(audio))) if audio.size else 0.0
         now = time.monotonic()
+        self._mark_audio_callback(now)
         self._audio_nonzero_seen, input_warning = audio_input_health(
             audio,
             stream_started_at=self._audio_stream_started_at,
@@ -177,7 +180,7 @@ class WhisperLiveTranscriber(Transcriber):
     def _start_audio_stream(self) -> None:
         def open_stream(device, samplerate: int):
             self.input_sample_rate = int(samplerate)
-            self._audio_stream_started_at = time.monotonic()
+            self._mark_audio_stream_started()
             self._audio_nonzero_seen = False
             stream = sd.InputStream(
                 samplerate=self.input_sample_rate,
@@ -483,6 +486,17 @@ class WhisperLiveTranscriber(Transcriber):
                 now=time.monotonic(),
                 interval_seconds=self.update_interval,
             ))
+            recovery_state = await loop.run_in_executor(
+                self._executor,
+                self._recover_audio_stream_if_stalled,
+            )
+            if recovery_state is not None:
+                pending_final_text = ""
+                pending_final_spans = []
+                pending_capture_started = None
+                last_publish = 0.0
+                next_pass_due = time.monotonic() + self.update_interval
+                continue
             now = time.monotonic()
             if previous_pass_started is not None:
                 record_transcription_pass_interval(now - previous_pass_started)

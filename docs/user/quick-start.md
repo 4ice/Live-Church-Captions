@@ -1,6 +1,6 @@
 # Church Cap Quick Start Guide
 
-Version: v0.7.4
+Version: v0.7.6
 
 This guide is for the person setting up Church Cap for a church service.
 
@@ -32,7 +32,7 @@ Use **Benchmark** before selecting heavier models such as `small.en` or `medium.
 2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.4"
+cd "$HOME/Documents/Live-Church-Captions-0.7.6"
 ```
 
 3. Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
@@ -53,7 +53,7 @@ If setup asks whether to set the Mac hostname to `church-cap.local`, choose yes 
 2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.4"
+cd "$HOME\Documents\Live-Church-Captions-0.7.6"
 ```
 
 3. Run setup.
@@ -79,11 +79,15 @@ If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came fro
 Open a terminal, then go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.4"
+cd "$HOME/Documents/Live-Church-Captions-0.7.6"
 bash setup-linux.sh
 ```
 
-The installer detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`. It installs only the system prerequisites and creates a project-local `.venv`. AlmaLinux and related RHEL-family systems use `dnf`/`yum`; the installer prefers Python 3.12 or 3.11 when available. It does not change repository configuration or install NVIDIA drivers/CUDA.
+The installer detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`. It installs only the system prerequisites and creates a project-local `.venv`. AlmaLinux and related RHEL-family systems use `dnf`/`yum`; the installer prefers Python 3.12 or 3.11 when available. It does not change repository configuration or install NVIDIA drivers. If active `firewalld` or UFW is present, setup recommends allowing the public viewer port, normally TCP 8080, and asks before changing it; operator port 9090 remains closed. When a working NVIDIA driver is already present, setup separately checks for the CUDA 12 cuBLAS and cuDNN 9 runtime libraries required by CTranslate2 and can install them inside `.venv`.
+
+Linux keeps both QR codes visible. Unless a hostname was explicitly configured through local DNS/mDNS, `CAPTION_LOCAL_HOSTNAME`, or `PUBLIC_BASE_URL`, the hostname QR is marked as requiring setup and the direct-IP QR is recommended. Merely naming the computer does not guarantee that a `.local` address works on audience phones.
+
+`nvidia-smi` can show CUDA support even when `libcublas.so.12` or `libcudnn.so.9` is absent from the application loader path. If an existing Linux installation reports either library missing, run `./install-cuda-runtime-linux.sh` and restart with `./start-linux.sh`. The start script exposes the project-local NVIDIA library directories before Python launches.
 
 Start later with:
 
@@ -174,9 +178,9 @@ Adjustments save automatically while captions are stopped. Stop captions before 
 
 ## Share Captions With Visitors
 
-In the operator page, open **Audience & OBS**.
+In the operator page, open **Congregation → Join Live Captions**.
 
-Use the main QR code first. If an Android phone or guest Wi-Fi cannot open the `.local` address, use the Android/IP fallback QR code. On an appliance, the Operator and Service Leader pages can create a temporary **Share QR** phone handoff so the QR image can be saved on a phone for printing or service slides.
+Use the configured-hostname QR first when local DNS/mDNS is working. On Linux without hostname setup—or whenever a phone cannot open the hostname—use the direct-IP QR. On an appliance, the Operator and Service Leader pages can create a temporary **Share QR** phone handoff so the QR image can be saved on a phone for printing or service slides.
 
 The **Outputs** area is separate from audience phones. **Room display** is for a projector, TV, or confidence monitor. **OBS overlay** is for livestream software as a browser source. Both use the same smoother caption animation as the audience view. On a Church Cap Appliance, Church Cap warns before opening these clean output pages because they intentionally have no operator navigation and can cover the kiosk controls.
 
@@ -200,6 +204,7 @@ Visitors automatically get the light or dark theme from their device settings. T
 - Use **Blank / pause** before private prayer, pastoral details, testimony, safeguarding, or anything sensitive. While blanked, captions are not shown, retained in the session transcript, or included in transcript exports; Church Cap also flushes the live transcription buffer and drops a short buffered-audio window when captions resume. Audience phones show the blanked/resumed notice in the selected caption UI language where a local UI string or runtime UI translation is available.
 - Use **Resume** when public captions should continue.
 - Watch the microphone level meter to confirm audio is coming in. If the selected input opens but supplies exact digital silence for three seconds, Church Cap shows a non-blocking warning with macOS, Windows, or Linux guidance. The warning clears when real samples arrive.
+- If an audio driver leaves the input falsely marked open but stops sending audio callbacks, Church Cap automatically reopens only the input stream after three seconds. The loaded speech model and CUDA session stay in memory, and stale pre-pause audio is discarded. A recovery notice appears; if Windows cannot reopen the selected input immediately, Church Cap keeps retrying with bounded delays while you check the sound desk connection and Windows microphone access.
 - Use the privacy controls to choose whether transcript history is saved and how long to keep it. A fresh app start begins with an empty visible session transcript; older saved transcript cache is pruned on startup using the retention window saved with that cache. **Open transcript folder** reveals the per-user local cache folder on the Church Cap computer. **Export TXT/VTT/SRT/JSON** downloads the current-session transcript only and asks the operator to confirm the privacy warning first. Clearing the transcript deletes the retained local transcript cache.
 
 ## Service Leader Controls
@@ -210,7 +215,7 @@ Smaller churches can pair a trusted phone or tablet without exposing the full op
 2. Generate the one-use QR code.
 3. Scan it with the trusted device.
 
-The simple page can start/stop captions, blank/resume for sensitive moments, change the audio input while captions are stopped, show microphone and caption-health status, share audience QR codes to a phone, export the current-session transcript, share redacted support logs after a warning, and enable translated captions in Automatic or Manual language mode. Language search matches native names, English names, and language codes. Its caption preview uses the same live feed as audience phones, but the page explains that a delayed control-device preview is not the main performance measure. It cannot access passwords, updates, performance settings, account/privacy settings, or translation installation.
+The simple page can start/stop captions, blank/resume for sensitive moments, change the audio input while captions are stopped, show microphone and caption-health status, share audience QR codes to a phone, and share the audience link through the device's normal share menu. On supported Apple devices that menu can include AirDrop; on Android it can include Quick Share, messages, WhatsApp and other installed apps. If local HTTP prevents the system share menu from opening, Copy link, Text message and Email remain available. Recipients still need access to the church network. The page can also export the current-session transcript, share redacted support logs after a warning, and enable translated captions in Automatic or Manual language mode. Language search matches native names, English names, and language codes. Its caption preview uses the same live feed as audience phones, but the page explains that a delayed control-device preview is not the main performance measure. It cannot access passwords, updates, performance settings, account/privacy settings, or translation installation.
 
 The QR expires after 90 seconds and works once. The paired session lasts at most four hours and expires after two hours without activity. A warning offers to refresh the idle timer before it expires. The **Service Leader** operator section shows connected-device status and can replace or cancel an unused QR, open the restricted route, or disconnect all paired devices.
 
@@ -225,6 +230,24 @@ Translated captions stay off until the operator enables them. The **Languages** 
 On Church Cap Appliance CPU boxes, the **Languages** page remains available but opens with a CPU warning and cannot exceed three active translated languages. On Church Cap Appliance GPU boxes, translated captions are available only when the box is installed with the GPU appliance profile and CUDA is ready. Normal desktop installs keep the full Languages page visible without the appliance cap.
 
 Translation is experimental and may be inaccurate. Start with the default active translated language limit, then keep it low if the computer struggles or captions begin to lag. Use a qualified human interpreter where accuracy matters.
+
+### Optional Translated Audio
+
+v0.7.6 retains the optional translated-caption audio introduced in v0.7.5. It can speak finalized translated captions to a visitor who selects **Listen**, without translating the text again. Stop captions, then use **Operator → Languages → Spoken Translated Audio** to choose the required packs, review their estimated size, and select **Install selected languages**. Installation, readiness and the visitor on/off control are kept together on that card. Normal setup and the source repository contain no voice weights. English never offers translated audio; Traditional Chinese currently uses Mandarin speech, not Cantonese.
+
+Run the optional installer only after normal setup, then follow the manifest, licence and live-test guidance in [Local Translated Audio](../translated-audio.md) and [Optional Spoken-Language Model Notices](../legal/SPOKEN_LANGUAGE_MODELS.md). Keep the feature off for a live service until a native listener has checked the exact voice and the target computer has passed the caption-latency, sensitive-mode, headphone and backlog tests.
+
+While text-translation or spoken-language resources are installing, keep the Operator page open to see the overall percentage and current phase. Spoken-language installs also show one circle for each selected voice package. Download byte percentages are measured directly where the package size is known; dependency installation and AI model conversion use labelled stage estimates and may remain at one percentage for several minutes.
+
+### Optional Service Context (before the service)
+
+If a sermon contains unusual names, places, organisations or difficult theological terms, open **Operator → Dashboard → Service Context** while captions are stopped. Paste the notes or choose a UTF-8 `.txt`/`.md` file (maximum 512 KiB), then select **Analyse notes locally**. Suggestions do not change Whisper in the safe default mode. After a short rehearsal, add an explicit “heard as → replace with” correction only for a consistent mistake, then select **Use for this service**.
+
+This step is optional. Church Cap discards the original notes after local analysis and keeps only the reviewed candidates in memory. The notes are not a script or teleprompter and cannot create captions without matching microphone audio. Approved context locks when captions start, becomes inactive when captions stop, and is not reused unless an operator explicitly re-arms it. Inactive candidates clear automatically after four hours or immediately when **Clear** is selected.
+
+Service Context is marked **Beta** as well as **Optional**. Direct **Experimental recognition assistance** is off by default. Enable it only for a particularly difficult proper name, select no more than two terms, and rehearse with the intended speech model, computer and audio route. This option supplies terms to every Whisper pass and may increase processing load, caption latency, false insertions or unstable wording. Compare it with the option switched off and do not make the first test during a production service.
+
+Bible-reference formatting does not require sermon notes. During every English caption run, explicit wording such as “first Corinthians chapter thirteen verse four” is formatted locally as `1 Corinthians 13:4`. Full passages are not placed in Whisper's prompt and Church Cap does not retrieve or insert verse text.
 
 ## Passwords
 
@@ -276,7 +299,9 @@ Wait a few seconds after running `./start-macos.sh`.
 
 ### The audience QR code does not open on a phone
 
-Use the Android/IP fallback QR code on the operator page. Also check that the phone is on the same network and that guest Wi-Fi is allowed to reach the caption computer.
+Use the direct-IP QR code on the operator page. On Linux, rerun `bash setup-linux.sh` and accept the recommended audience firewall rule if it was previously skipped. Also check that the phone is on the same network and that guest Wi-Fi/client isolation allows it to reach the caption computer. A working host firewall rule cannot override isolation enforced by the router or wireless access point.
+
+If Safari reports that the server stopped responding after the page has been open or translated audio has been used, first reopen the current QR link. v0.7.6 refreshes stale viewer assets and recreates caption/audio connections when Safari restores a suspended page. If Safari alone still fails while another phone can reach Church Cap, try the direct-IP QR; success there points to cached local-hostname/mDNS resolution rather than the Church Cap server.
 
 ### No audio devices appear
 
@@ -305,9 +330,11 @@ AI-generated captions can contain mistakes. Use the sensitive blank/pause mode f
 
 ## Feedback
 
-The operator page includes a **Feedback** link. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics > Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. v0.7.4 retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
+The operator page includes **Open feedback page** under **Diagnostics → Support**. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics → Support → Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. v0.7.6 retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
 
-Open **Diagnostics → Storage use** to see the application, Church Cap data, Hugging Face model downloads, OpenAI Whisper downloads, and current log use. Storage is calculated only when this page is opened or refreshed. **Review unused downloads** opens a Church Cap-themed confirmation menu; nothing is removed automatically. The active model, settings, transcripts, measurements, and current logs are protected. An inactive model offered for cleanup must download again if you select it later. Church Cap limits each of its diagnostic logs to 5 MB plus two archived copies.
+Open **Diagnostics → Application Storage** to see the application, Church Cap data, Hugging Face model downloads, OpenAI Whisper downloads, optional spoken-audio models, and current log use. Storage is calculated only when this page is opened or refreshed. **Review unused downloads** opens a Church Cap-themed confirmation menu; nothing is removed automatically. The active model, settings, transcripts, measurements, and current logs are protected. An inactive model offered for cleanup must download again if you select it later. Church Cap limits each of its diagnostic logs to 5 MB plus two archived copies.
+
+On Windows, translation installer output is stored in `%APPDATA%\Church Cap\logs\translation-install.log`, not in the downloaded Church Cap folder. Enter `%APPDATA%\Church Cap\logs` in the Run dialog or File Explorer to open it. The authenticated diagnostics download also includes the recent installer output with local paths redacted.
 
 For technical troubleshooting, use the broader **Download diagnostics** file, or **Share diagnostics** on an appliance. Attach diagnostics only if you are comfortable sharing system specs, OS version, performance settings, hardware status, measurements, storage category sizes, and redacted updater/CUDA logs. Do not post diagnostics publicly unless you have reviewed the file.
 

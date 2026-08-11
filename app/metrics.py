@@ -19,7 +19,7 @@ from app.paths import data_path
 
 logger = logging.getLogger(__name__)
 
-SERVICE_METRICS_SCHEMA_VERSION = 11
+SERVICE_METRICS_SCHEMA_VERSION = 13
 SERVICE_REPORT_SCHEMA_VERSION = 1
 MAX_COMPLETED_SERVICES = 5
 MAX_RESERVOIR_SAMPLES = 2048
@@ -68,6 +68,10 @@ class RuntimeMetrics:
     sample_rate: int = 16000
     audio_stream_open: bool = False
     audio_input_warning: str | None = None
+    audio_callback_stalls: int = 0
+    audio_stream_restarts: int = 0
+    audio_stream_restart_failures: int = 0
+    audio_recovery_message: str | None = None
     error: str | None = None
 
 
@@ -221,6 +225,11 @@ _CONFIGURATION_FIELDS = {
     "translation_allowed_languages",
     "translation_max_active_languages",
     "translation_queue_capacity_per_language",
+    "service_context_mode",
+    "service_context_hint_count",
+    "service_context_additional_prompt_tokens",
+    "service_context_reference_count",
+    "service_context_correction_count",
 }
 
 _SAFE_ENUMS = {
@@ -230,6 +239,7 @@ _SAFE_ENUMS = {
     "whisper_compute_type_requested": {"auto", "int8", "int8_float16", "float16", "float32", "fp16", "fp32"},
     "translation_provider": {"disabled", "argos", "both", "ct2small100", "small100", "demo"},
     "translation_timing_mode": {"live", "stable", "responsive"},
+    "service_context_mode": {"none", "corrections_only", "experimental_hints"},
 }
 _PROVIDER_LABELS = {"disabled", "argos", "both", "ct2small100", "small100", "demo"}
 _LANGUAGE_CODE_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,2}$", re.IGNORECASE)
@@ -253,7 +263,14 @@ def _safe_configuration(configuration: dict[str, Any] | None) -> dict[str, Any]:
             })
         elif key in {"translation_enabled", "word_timestamps_enabled"}:
             result[key] = bool(value)
-        elif key in {"translation_max_active_languages", "translation_queue_capacity_per_language"}:
+        elif key in {
+            "translation_max_active_languages",
+            "translation_queue_capacity_per_language",
+            "service_context_hint_count",
+            "service_context_additional_prompt_tokens",
+            "service_context_reference_count",
+            "service_context_correction_count",
+        }:
             try:
                 result[key] = max(0, min(100, int(value or 0)))
             except (TypeError, ValueError):
@@ -294,6 +311,9 @@ def _empty_summary(message: str | None = None) -> dict[str, Any]:
             "suppressed_hypothesis_words": 0,
             "speech_bounded_audio_passes": 0,
             "trailing_silence_trimmed_seconds": 0.0,
+            "audio_callback_stalls": 0,
+            "audio_stream_restarts": 0,
+            "audio_stream_restart_failures": 0,
             "pass_interval": _Series().summary(),
         },
         "english_publish_delay": _Series().summary(),
@@ -411,6 +431,9 @@ def _new_service(configuration: dict[str, Any] | None = None) -> dict[str, Any]:
             "suppressed_hypothesis_words": 0,
             "speech_bounded_audio_passes": 0,
             "trailing_silence_trimmed_seconds": 0.0,
+            "audio_callback_stalls": 0,
+            "audio_stream_restarts": 0,
+            "audio_stream_restart_failures": 0,
         },
         "source_units": {
             "engine": "word_timestamp_local_agreement_v5",
@@ -690,7 +713,7 @@ def initialise_service_metrics_storage(path: str | Path | None = None) -> None:
         active_marker = None
         try:
             payload = json.loads(_storage_path.read_text(encoding="utf-8")) if _storage_path.exists() else {}
-            if int(payload.get("service_metrics_schema_version") or 0) in {3, 4, 5, 6, 7, 8, 9, 10, SERVICE_METRICS_SCHEMA_VERSION}:
+            if int(payload.get("service_metrics_schema_version") or 0) in {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, SERVICE_METRICS_SCHEMA_VERSION}:
                 _latest_completed_services = [
                     item for item in payload.get("latest_completed_services", [])
                     if isinstance(item, dict)
@@ -918,6 +941,25 @@ def record_transcription_input_trim(trailing_silence_seconds: float) -> None:
                 streaming["trailing_silence_trimmed_seconds"] + trimmed,
                 4,
             )
+
+
+def record_audio_watchdog_event(event: str) -> None:
+    """Record privacy-safe evidence of an audio callback stall and recovery."""
+    fields = {
+        "stall": ("audio_callback_stalls", "Audio input stalled; automatic recovery started."),
+        "restart": ("audio_stream_restarts", "Audio input recovered automatically after a stalled callback."),
+        "failure": ("audio_stream_restart_failures", "Audio input recovery is retrying automatically."),
+    }
+    selected = fields.get(str(event or "").strip().lower())
+    if selected is None:
+        return
+    field, message = selected
+    with _lock:
+        setattr(_metrics, field, int(getattr(_metrics, field)) + 1)
+        _metrics.audio_recovery_message = message
+        if _current_service is not None:
+            streaming = _current_service["transcription_streaming"]
+            streaming[field] = int(streaming.get(field, 0)) + 1
 
 
 def record_caption(*, is_final: bool, transcript_commits: int = 0) -> None:

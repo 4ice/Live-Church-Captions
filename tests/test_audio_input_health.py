@@ -64,6 +64,8 @@ class AudioInputHealthTests(unittest.TestCase):
             self.assertLess(stream.index("self._start_audio_stream()"), stream.index("self._load_model"))
             self.assertIn("audio_input_warning=input_warning", source)
             self.assertIn("audio_stream_open=False", source)
+            self.assertIn("self._mark_audio_callback(now)", source)
+            self.assertIn("self._recover_audio_stream_if_stalled", source)
 
     def test_operator_shows_the_non_fatal_audio_warning(self):
         root = Path(__file__).resolve().parents[1]

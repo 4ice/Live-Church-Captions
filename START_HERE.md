@@ -7,7 +7,7 @@ Church Cap is a local live-caption app for churches. It runs on the caption comp
 Open Terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.4"
+cd "$HOME/Documents/Live-Church-Captions-0.7.6"
 ```
 
 Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
@@ -23,7 +23,7 @@ Setup may take a while. It installs the local Python environment and audio depen
 Open PowerShell, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.4"
+cd "$HOME\Documents\Live-Church-Captions-0.7.6"
 ```
 
 Run setup:
@@ -47,13 +47,20 @@ If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came fro
 Open a terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.4"
+cd "$HOME/Documents/Live-Church-Captions-0.7.6"
 bash setup-linux.sh
 ```
 
 The script detects common Linux package managers and installs the required Python, build, PortAudio, and download tools. It supports AlmaLinux/Rocky/RHEL/Fedora (`dnf`/`yum`), Ubuntu/Debian (`apt`), openSUSE (`zypper`), Arch (`pacman`), and Alpine (`apk`).
 
-The installer keeps Python packages inside `.venv` and does not enable extra repositories or install NVIDIA drivers. On AlmaLinux, if a package is unavailable, check that AppStream and CRB are enabled according to your system policy.
+The installer keeps Python packages inside `.venv` and does not enable extra repositories or install NVIDIA drivers. On AlmaLinux and other systems using active `firewalld` or UFW, setup recommends allowing the public audience port and asks before making the change. Only TCP port 8080 (or your configured viewer port) is opened; operator port 9090 is not. Pressing Enter skips the firewall change. If a working NVIDIA driver is already present, setup also checks whether CTranslate2 can load its required CUDA 12 cuBLAS and cuDNN 9 libraries and offers to install missing runtime libraries inside `.venv`. The large optional download starts only if you explicitly answer `y` or `yes`; pressing Enter skips it. On AlmaLinux, if a system package is unavailable, check that AppStream and CRB are enabled according to your system policy.
+
+Seeing a CUDA version in `nvidia-smi` is not enough by itself: that confirms the driver capability, not that `libcublas.so.12` and `libcudnn.so.9` are installed and visible to Church Cap. For an existing Linux install, repair the local runtime with:
+
+```bash
+./install-cuda-runtime-linux.sh
+./start-linux.sh
+```
 
 ## Normal Sunday Start
 
@@ -87,13 +94,13 @@ On first Windows setup, Church Cap may open the password setup page first:
 http://localhost:9090/setup
 ```
 
-The audience caption page normally uses:
+The audience caption page can use a configured local hostname:
 
 ```text
 http://church-cap.local:8080/
 ```
 
-If that does not work on a phone, use the Android/IP fallback QR code shown on the operator page.
+On Linux, both QR codes remain available. Until local DNS or mDNS is configured, the hostname QR is labelled as requiring setup and the direct-IP QR is the recommended choice. If the IP QR does not work, allow the viewer port through the host firewall and check whether guest Wi-Fi isolates phones from wired/LAN devices.
 
 ## Operator Checklist
 
@@ -117,7 +124,11 @@ On the Church Cap computer, use either route:
 
 Their phone/tablet receives a simpler page for start, stop, blank, resume, audio input, caption health, audience QR sharing, and Automatic/Manual translated-language control. The current action has a subtle glow and status messages explain when captions are starting, stopping, blanked, or resuming. It does not receive full operator access. Use a trusted staff/AV Wi-Fi network, especially when running over HTTP. The page includes dismissible local-HTTP and caption-preview notes so the service leader understands the network/security trade-off and knows that a delayed control-page preview does not necessarily mean the audience feed is delayed.
 
-The service leader can share the audience QR code by generating a temporary phone-download QR, then save it for ProPresenter, EasyWorship, FreeShow, slides, or printed notices without opening the full operator page. On an appliance, the Operator Audience & OBS page uses the same handoff for its QR buttons.
+The service leader can share the audience QR code by generating a temporary phone-download QR, then save it for ProPresenter, EasyWorship, FreeShow, slides, or printed notices without opening the full operator page. On an appliance, **Operator → Congregation → Join Live Captions** uses the same handoff for its QR buttons.
+
+## Optional Translated Audio Pilot
+
+v0.7.6 retains the optional translated-caption audio introduced in v0.7.5. A visitor can select **Listen** after the church installs a reviewed voice pack. In **Operator → Languages → Spoken Translated Audio**, stop captions, choose only the language packs the church needs, review the estimated size, and select **Install selected languages**. Normal setup downloads no voice weights. The same section reports readiness and lets the operator make spoken audio available to visitors. English never shows the control, and ordinary text captions continue if speech generation is unavailable. Traditional Chinese currently uses Mandarin speech, not Cantonese. See [docs/translated-audio.md](docs/translated-audio.md) and the [voice-model notices](docs/legal/SPOKEN_LANGUAGE_MODELS.md) before live use.
 
 ## If Something Goes Wrong
 

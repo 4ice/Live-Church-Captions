@@ -116,7 +116,7 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         primary_save_index = self.operator.index('id="translationPrimarySave"')
         advanced_save_index = self.operator.index('id="translationAdvancedSave"')
         maximum_index = self.operator.index('Maximum active translated languages')
-        advanced_index = self.operator.index('<summary>Advanced language controls</summary>')
+        advanced_index = self.operator.index('data-subpage="advanced-language-controls"')
         list_index = self.operator.index('Restricted-language list')
         bottom_copy_index = self.operator.index('Recommended package uses CTranslate2 INT8')
         self.assertLess(maximum_index, primary_save_index)
@@ -149,12 +149,64 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         self.assertIn('border-top: 0;', updates)
 
     def test_operator_audience_outputs_are_clear_and_appliance_guarded(self):
-        self.assertIn("Room display and livestream", self.operator)
+        self.assertIn('<span class="nav-label">Congregation</span>', self.operator)
+        self.assertIn('data-subsection="room-access" data-description="Help congregation members join live captions', self.operator)
+        self.assertIn('>Join Live Captions</button>', self.operator)
+        self.assertIn("Congregation QR codes", self.operator)
+        self.assertIn('data-subpage="room-display"', self.operator)
+        self.assertIn('data-subpage="obs-live-stream"', self.operator)
+        self.assertIn("Projector or confidence screen", self.operator)
+        self.assertIn("Livestream browser source", self.operator)
         self.assertIn("output-option-card", self.operator)
         self.assertIn("Appliance safeguard", self.operator)
         self.assertIn("handleApplianceOutputLink", self.operator)
         self.assertIn("applianceOutputDialog", self.operator)
         self.assertIn("output-option-grid", self.styles)
+
+    def test_congregation_icon_uses_three_people(self):
+        congregation_button = self.operator.split('data-menu-category="audience"', 1)[1].split('</button>', 1)[0]
+        self.assertIn('class="nav-icon nav-icon-congregation"', congregation_button)
+        self.assertIn('viewBox="0 0 24 24"', congregation_button)
+        self.assertEqual(congregation_button.count('<circle'), 3)
+        self.assertEqual(congregation_button.count('<path'), 3)
+        self.assertIn('.nav-icon-congregation svg', self.styles)
+
+    def test_operator_navigation_uses_single_open_submenus(self):
+        expected_subsections = (
+            "live-service",
+            "performance",
+            "multilingual-captions",
+            "advanced-language-controls",
+            "spoken-translated-audio",
+            "room-access",
+            "room-display",
+            "obs-live-stream",
+            "security",
+            "transcript-controls",
+            "guidance",
+            "support",
+            "application-storage",
+        )
+        for subsection in expected_subsections:
+            self.assertIn(f'data-subsection="{subsection}"', self.operator)
+        self.assertIn("setExpandedNavGroup", self.operator)
+        self.assertIn("toggleNavGroup", self.operator)
+        self.assertIn("operatorSubsectionDefaults", self.operator)
+        self.assertIn("grid-template-rows: 0fr", self.styles)
+        self.assertIn(".nav-menu-group.expanded .nav-submenu", self.styles)
+        self.assertNotIn('<p class="nav-category">Guides</p>', self.operator)
+
+    def test_operator_subpages_keep_requested_companion_layouts(self):
+        self.assertIn('data-subpages="multilingual-captions advanced-language-controls"', self.operator)
+        self.assertIn("Viewer language activity", self.operator)
+        self.assertEqual(self.operator.count('data-subpage="transcript-controls"'), 1)
+        self.assertEqual(self.operator.count('data-subpage="guidance"'), 2)
+        self.assertIn('>Transcript Controls</button>', self.operator)
+        self.assertIn('>Guidance and Caption Safety</button>', self.operator)
+        self.assertIn('data-subpage="support"', self.operator)
+        self.assertIn('data-subpage="application-storage"', self.operator)
+        self.assertIn('>Application Storage</button>', self.operator)
+        self.assertNotIn('Application Storage (Local Storage)', self.operator)
 
     def test_service_leader_page_has_health_audio_and_expiry_controls(self):
         self.assertIn("How to improve caption health", self.service_leader)
@@ -194,6 +246,33 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         self.assertIn("top: max(0.75rem, env(safe-area-inset-top));", self.styles)
         self.assertIn("Incoming language request", self.service_leader)
         self.assertIn("Select Accept to enable a language for this service", self.service_leader)
+
+    def test_service_leader_uses_an_on_the_go_single_section_menu(self):
+        for section in ("health", "audio", "audience", "languages", "exports"):
+            self.assertIn(f'data-service-leader-section="{section}"', self.service_leader)
+            self.assertIn(f'data-service-leader-panel="{section}"', self.service_leader)
+        self.assertIn("On-the-go menu", self.service_leader)
+        self.assertIn("toggleServiceLeaderMenuGroup", self.service_leader)
+        self.assertIn("showServiceLeaderSection", self.service_leader)
+        self.assertIn("serviceLeaderRequestMenuBadge", self.service_leader)
+        self.assertIn("serviceLeaderConnectionPill", self.service_leader)
+        self.assertIn("shareServiceLeaderAudienceLink", self.service_leader)
+        self.assertIn("navigator.share", self.service_leader)
+        self.assertIn("openServiceLeaderAudienceShareDialog", self.service_leader)
+        self.assertIn('id="audienceShareDialog"', self.service_leader)
+        self.assertIn("copyServiceLeaderAudienceLink", self.service_leader)
+        self.assertIn("sms:?body=", self.service_leader)
+        self.assertIn("mailto:?subject=", self.service_leader)
+        self.assertIn("AirDrop, Nearby Share, apps or copy", self.service_leader)
+        self.assertIn("nav-icon nav-icon-service service-leader-menu-operator-icon", self.service_leader)
+        self.assertIn("nav-icon nav-icon-congregation service-leader-menu-operator-icon", self.service_leader)
+        self.assertIn("nav-icon nav-icon-diagnostics service-leader-menu-operator-icon", self.service_leader)
+        self.assertIn("sessionStorage.setItem('serviceLeaderSection'", self.service_leader)
+        self.assertIn(".service-leader-menu-group.is-expanded", self.styles)
+        self.assertIn(".service-leader-menu-group:not(.is-expanded) .service-leader-submenu", self.styles)
+        self.assertIn(".service-leader-section-panel[hidden]", self.styles)
+        active_style = self.styles.split(".service-leader-submenu-button.is-active {", 1)[1].split("}", 1)[0]
+        self.assertNotIn("box-shadow", active_style)
 
     def test_service_leader_page_has_language_policy_and_dismissible_notices(self):
         self.assertIn("serviceLeaderLanguagePolicy", self.service_leader)

@@ -3,7 +3,7 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-APP_VERSION = "0.7.4"
+APP_VERSION = "0.7.6"
 
 
 class Settings(BaseSettings):
@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Keep this release number as a literal as well as APP_VERSION. The v0.7.0
     # updater reads this exact field while validating a downloaded release.
     # A regression test keeps both values aligned.
-    app_version: str = "0.7.4"
+    app_version: str = "0.7.6"
     feedback_email: str = "info@churchcap.org"
     host: str = "0.0.0.0"
     port: int = 8080
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     operator_port: int = 9090
     dual_port_mode: bool = False
     lock_operator_to_localhost: bool = True
+    caption_local_hostname: str | None = None
     public_base_url: str | None = None
 
     transcriber_mode: str = "whisper"
@@ -49,6 +50,11 @@ class Settings(BaseSettings):
     translation_allowed_languages: str = "en"
     translation_max_active_languages: int = 2
     translation_queue_capacity_per_language: int = 8
+
+    # Optional translated-caption speech. The feature remains unavailable until
+    # an operator installs Sherpa-ONNX and an approved local voice manifest.
+    tts_num_threads: int = 2
+    tts_provider: str = "cpu"
 
     church_name: str = "Church Cap"
     dnd_reminder: bool = True

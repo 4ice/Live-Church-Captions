@@ -13,8 +13,10 @@ if (-not (Test-Path $VenvPython)) {
     exit 1
 }
 
+& $VenvPython (Join-Path $ProjectRoot "scripts\report-install-progress.py") 2 "dependencies" "Preparing Base translation package dependencies."
 & $VenvPython -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
 & $VenvPython -m pip install -r requirements-translation.txt
+& $VenvPython (Join-Path $ProjectRoot "scripts\report-install-progress.py") 10 "package-index" "Loading the Argos language package index."
 
 Write-Host ""
 Write-Host "Argos Translate is installed in the local .venv."
@@ -28,6 +30,7 @@ $scope = if ($All) { "all" } else { "common" }
 $pythonScript = @"
 from argostranslate import package
 from app.translation_packages import validate_argos_package_archive
+from app.install_progress import write_install_progress
 SCOPE = "$scope"
 COMMON_TARGETS = ["es", "fr", "pt", "pl", "uk", "ar", "fa", "zh", "zt"]
 print("Updating Argos package index...")
@@ -37,12 +40,20 @@ if SCOPE == "all":
     targets = sorted({p.to_code for p in available if p.from_code == "en" and p.to_code != "en"})
 else:
     targets = COMMON_TARGETS
+LABELS = {"es": "Spanish", "fr": "French", "pt": "Portuguese", "pl": "Polish", "uk": "Ukrainian", "ar": "Arabic", "fa": "Farsi", "zh": "Chinese — Simplified", "zt": "Chinese — Traditional"}
+progress_items = [{"id": target, "label": LABELS.get(target, target.upper()), "state": "pending", "percent": 0} for target in targets]
+write_install_progress(14, "package-index", f"Found {len(targets)} Base language packages to check.", item_count=len(targets), items=progress_items)
 installed = []
 missing = []
-for target in targets:
+for index, target in enumerate(targets, start=1):
+    start_percent = 14 + round(80 * ((index - 1) / max(1, len(targets))))
+    progress_items[index - 1].update(state="downloading", percent=20)
+    write_install_progress(start_percent, "downloading-package", f"Downloading and installing English to {LABELS.get(target, target.upper())}.", item_index=index, item_count=len(targets), items=progress_items, indeterminate=True)
     candidates = [p for p in available if p.from_code == "en" and p.to_code == target]
     if not candidates:
         missing.append(target)
+        progress_items[index - 1].update(state="error", percent=100)
+        write_install_progress(start_percent, "package-missing", f"No English to {LABELS.get(target, target.upper())} package was available.", item_index=index, item_count=len(targets), items=progress_items)
         print(f"No en->{target} package found in the Argos index.")
         continue
     pkg = candidates[0]
@@ -51,11 +62,15 @@ for target in targets:
     validate_argos_package_archive(path)
     package.install_from_path(path)
     installed.append(target)
+    progress_items[index - 1].update(state="complete", percent=100)
+    write_install_progress(14 + round(80 * (index / max(1, len(targets)))), "package-complete", f"English to {LABELS.get(target, target.upper())} is installed.", item_index=index, item_count=len(targets), items=progress_items)
 print("\nInstalled target languages:", ", ".join(installed) or "none")
 if missing:
     print("Missing packages:", ", ".join(missing))
 "@
 $pythonScript | & $VenvPython -
+
+& $VenvPython (Join-Path $ProjectRoot "scripts\report-install-progress.py") 96 "configuration" "Saving Base translation package settings."
 
 $enableValue = if ($Enable) { "true" } else { "false" }
 $configScript = @"
@@ -112,6 +127,7 @@ runtime.update({
 runtime_path.write_text(json.dumps(runtime, indent=2), encoding='utf-8')
 "@
 $configScript | & $VenvPython -
+& $VenvPython (Join-Path $ProjectRoot "scripts\report-install-progress.py") 100 "complete" "Base translation packages are ready."
 
 if ($Enable) {
     Write-Host ""

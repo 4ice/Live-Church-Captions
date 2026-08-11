@@ -7,7 +7,7 @@
   <meta name="service-leader-csrf" content="{{ csrf_token }}">
   <title>Church Cap · Service leader</title>
   <link rel="icon" type="image/png" href="/static/branding/church-cap-square-dark.png">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=0.7.6-ui-3">
 </head>
 <body class="service-leader-page glass-page">
   <script>
@@ -23,9 +23,16 @@
   </script>
   <main class="service-leader-shell">
     <header class="service-leader-header glass-card">
-      <div>
-        <p class="eyebrow">Church Cap</p>
-        <h1>Service leader controls</h1>
+      <div class="service-leader-header-identity">
+        <img id="serviceLeaderHeaderLogo" src="/static/branding/church-cap-square-dark.png" alt="" class="service-leader-header-logo">
+        <div>
+          <p class="eyebrow">Church Cap</p>
+          <h1>Service leader</h1>
+          <div class="service-leader-connection-row" aria-live="polite">
+            <span id="serviceLeaderConnectionPill" class="status-pill health-unknown">Connecting</span>
+            <small id="serviceLeaderLastUpdated" class="muted">Waiting for Church Cap</small>
+          </div>
+        </div>
       </div>
       <div class="service-leader-header-actions">
         <button type="button" id="serviceLeaderThemeToggle" class="secondary-button compact-button" onclick="toggleServiceLeaderTheme()">Light mode</button>
@@ -80,12 +87,69 @@
       </button>
     </section>
 
-    <section class="service-leader-card glass-card">
+    <nav class="service-leader-menu glass-card" aria-label="Service Leader sections">
+      <div class="service-leader-menu-heading">
+        <div><p class="eyebrow">On-the-go menu</p><strong id="serviceLeaderCurrentSectionLabel">Caption health</strong></div>
+        <span class="service-leader-menu-hint">Choose one task</span>
+      </div>
+      <div class="service-leader-menu-groups">
+        <section class="service-leader-menu-group is-expanded" data-service-leader-menu-group>
+          <button type="button" class="service-leader-menu-category" aria-expanded="true" onclick="toggleServiceLeaderMenuGroup(this)">
+            <span class="nav-icon nav-icon-service service-leader-menu-operator-icon" aria-hidden="true"></span>
+            <span><strong>Service</strong><small>Health and audio input</small></span>
+            <span class="service-leader-menu-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="service-leader-submenu" aria-hidden="false">
+            <button type="button" class="service-leader-submenu-button is-active" data-service-leader-section="health" onclick="showServiceLeaderSection('health')"><span>Caption health</span><small>Delay and system load</small></button>
+            <button type="button" class="service-leader-submenu-button" data-service-leader-section="audio" onclick="showServiceLeaderSection('audio')"><span>Audio input</span><small>Microphone or interface</small></button>
+          </div>
+        </section>
+        <section class="service-leader-menu-group" data-service-leader-menu-group>
+          <button type="button" class="service-leader-menu-category" aria-expanded="false" onclick="toggleServiceLeaderMenuGroup(this)">
+            <span class="nav-icon nav-icon-congregation service-leader-menu-operator-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <g opacity="0.82">
+                  <circle cx="4.7" cy="9.2" r="2.05"></circle>
+                  <path d="M0.8 19.5c0.08-2.7 1.7-4.72 4.08-5.22 0.92-0.2 1.82-0.08 2.62 0.3"></path>
+                  <circle cx="19.3" cy="9.2" r="2.05"></circle>
+                  <path d="M16.5 14.58c0.8-0.38 1.7-0.5 2.62-0.3 2.38 0.5 4 2.52 4.08 5.22"></path>
+                </g>
+                <circle cx="12" cy="7" r="2.8"></circle>
+                <path d="M6.2 20.25C6.2 16.7 8.78 14 12 14s5.8 2.7 5.8 6.25"></path>
+              </svg>
+            </span>
+            <span><strong>Congregation</strong><small>Joining and languages</small></span>
+            <span id="serviceLeaderRequestMenuBadge" class="service-leader-menu-badge" hidden>0</span>
+            <span class="service-leader-menu-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="service-leader-submenu" aria-hidden="true" inert>
+            <button type="button" class="service-leader-submenu-button" data-service-leader-section="audience" onclick="showServiceLeaderSection('audience')"><span>Join captions</span><small>Audience link and QR</small></button>
+            <button type="button" class="service-leader-submenu-button" data-service-leader-section="languages" onclick="showServiceLeaderSection('languages')"><span>Languages</span><small>Translation and requests</small></button>
+          </div>
+        </section>
+        <section class="service-leader-menu-group" data-service-leader-menu-group>
+          <button type="button" class="service-leader-menu-category" aria-expanded="false" onclick="toggleServiceLeaderMenuGroup(this)">
+            <span class="nav-icon nav-icon-diagnostics service-leader-menu-operator-icon" aria-hidden="true"></span>
+            <span><strong>Tools</strong><small>Service files and support</small></span>
+            <span class="service-leader-menu-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="service-leader-submenu" aria-hidden="true" inert>
+            <button type="button" class="service-leader-submenu-button" data-service-leader-section="exports" onclick="showServiceLeaderSection('exports')"><span>Logs and transcripts</span><small>Warned service exports</small></button>
+          </div>
+        </section>
+      </div>
+    </nav>
+
+    <section id="serviceLeaderPanelAudience" class="service-leader-card service-leader-section-panel glass-card" data-service-leader-panel="audience" hidden>
       <div class="panel-heading-row">
         <div><p class="eyebrow">Audience access</p><h2>Caption QR code</h2></div>
       </div>
       <p class="muted">Share a ready-to-use audience QR code with a phone, then add it to presentation software, slides, or printed notices.</p>
       <div class="service-leader-qr-actions">
+        <button type="button" class="service-leader-qr-button service-leader-share-link-button" onclick="openServiceLeaderAudienceShareDialog()" aria-label="Open options for sharing the audience caption link">
+          <span class="service-leader-card-icon nav-icon nav-icon-link" aria-hidden="true"></span>
+          <span><strong>Share audience link</strong><small>AirDrop, Nearby Share, apps or copy</small></span>
+        </button>
         <button type="button" class="service-leader-qr-button" onclick="shareServiceLeaderDownload('audience_qr')" aria-label="Share audience QR code to a phone">
           <span class="service-leader-card-icon nav-icon nav-icon-audience" aria-hidden="true"></span>
           <span><strong>Share Audience QR</strong><small>Scan to save on a phone</small></span>
@@ -96,9 +160,10 @@
         </button>
       </div>
       <p class="muted small-result">Audience link: <code>{{ audience_url }}</code></p>
+      <p id="serviceLeaderAudienceShareResult" class="muted small-result" aria-live="polite"></p>
     </section>
 
-    <section class="service-leader-card glass-card">
+    <section id="serviceLeaderPanelExports" class="service-leader-card service-leader-section-panel glass-card" data-service-leader-panel="exports" hidden>
       <div class="panel-heading-row">
         <div><p class="eyebrow">Appliance support</p><h2>Logs and transcripts</h2></div>
       </div>
@@ -120,7 +185,7 @@
       <p class="muted small-result">Transcripts may include names, prayer requests, testimony, or pastoral details. Support logs exclude captions and secrets, but may still include system names, device names, and error details.</p>
     </section>
 
-    <section class="service-leader-card glass-card">
+    <section id="serviceLeaderPanelHealth" class="service-leader-card service-leader-section-panel is-active glass-card" data-service-leader-panel="health">
       <div class="panel-heading-row">
         <div><p class="eyebrow">Live health</p><h2>Caption performance</h2></div>
         <span id="serviceLeaderHealthPill" class="status-pill health-unknown">Waiting</span>
@@ -136,7 +201,7 @@
       <button type="button" class="secondary-button full-width" onclick="document.getElementById('healthGuide').showModal()">How to improve caption health</button>
     </section>
 
-    <section class="service-leader-card glass-card service-leader-form-card">
+    <section id="serviceLeaderPanelAudio" class="service-leader-card service-leader-section-panel glass-card service-leader-form-card" data-service-leader-panel="audio" hidden>
       <div class="panel-heading-row"><div><p class="eyebrow">Audio source</p><h2>Microphone / interface</h2></div></div>
       <div class="service-leader-field-stack">
         <label for="serviceLeaderAudioDevice">Input device</label>
@@ -146,7 +211,7 @@
       <p id="serviceLeaderAudioResult" class="muted small-result"></p>
     </section>
 
-    <section class="service-leader-card glass-card service-leader-form-card">
+    <section id="serviceLeaderPanelLanguages" class="service-leader-card service-leader-section-panel glass-card service-leader-form-card" data-service-leader-panel="languages" hidden>
       <div class="panel-heading-row">
         <div><p class="eyebrow">Audience languages</p><h2>Translated captions</h2></div>
         <label class="service-leader-translation-switch"><input id="serviceLeaderTranslationEnabled" type="checkbox"><span>Enabled</span></label>
@@ -220,6 +285,22 @@
     </div>
   </dialog>
 
+  <dialog id="audienceShareDialog" class="service-leader-dialog service-leader-confirm-dialog audience-share-dialog glass-card" aria-labelledby="audienceShareDialogTitle">
+    <form method="dialog"><button class="dialog-close" aria-label="Close audience sharing options">×</button></form>
+    <p class="eyebrow">Congregation · audience access</p>
+    <h2 id="audienceShareDialogTitle">Share the audience caption link</h2>
+    <p class="muted">On Apple devices, the system share menu can include AirDrop. On Android it can include Quick Share, messages, WhatsApp, and other installed apps.</p>
+    <div class="audience-share-link"><code id="audienceShareDialogLink"></code></div>
+    <p class="service-leader-warning-note">Recipients must be connected to the church network that can reach this Church Cap computer.</p>
+    <div class="audience-share-actions">
+      <button type="button" id="audienceNativeShareButton" onclick="shareServiceLeaderAudienceLink()">Share with this device</button>
+      <button type="button" class="secondary-button" onclick="copyServiceLeaderAudienceLink()">Copy link</button>
+      <a id="audienceSmsShareLink" class="button-link secondary" href="#">Text message</a>
+      <a id="audienceEmailShareLink" class="button-link secondary" href="#">Email</a>
+    </div>
+    <p id="audienceShareDialogResult" class="muted small-result" aria-live="polite"></p>
+  </dialog>
+
 
   <dialog id="exportWarningDialog" class="service-leader-dialog service-leader-confirm-dialog glass-card">
     <form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form>
@@ -240,6 +321,151 @@
 
   <script>
     const serviceLeaderCsrf = document.querySelector('meta[name="service-leader-csrf"]').content;
+    const serviceLeaderAudienceUrl = {{ audience_url | tojson }};
+    const serviceLeaderSectionLabels = {
+      health: 'Caption health',
+      audio: 'Audio input',
+      audience: 'Join captions',
+      languages: 'Languages',
+      exports: 'Logs and transcripts',
+    };
+
+    function toggleServiceLeaderMenuGroup(button) {
+      const selectedGroup = button?.closest('[data-service-leader-menu-group]');
+      if (!selectedGroup) return;
+      const wasExpanded = selectedGroup.classList.contains('is-expanded');
+      document.querySelectorAll('[data-service-leader-menu-group]').forEach((group) => {
+        const expanded = group === selectedGroup && !wasExpanded;
+        group.classList.toggle('is-expanded', expanded);
+        group.querySelector('.service-leader-menu-category')?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const submenu = group.querySelector('.service-leader-submenu');
+        if (submenu) {
+          submenu.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+          submenu.inert = !expanded;
+        }
+      });
+    }
+
+    function showServiceLeaderSection(section, {scroll = true} = {}) {
+      if (!serviceLeaderSectionLabels[section]) section = 'health';
+      const selectedButton = document.querySelector(`[data-service-leader-section="${section}"]`);
+      const selectedGroup = selectedButton?.closest('[data-service-leader-menu-group]');
+      document.querySelectorAll('[data-service-leader-menu-group]').forEach((group) => {
+        const expanded = group === selectedGroup;
+        group.classList.toggle('is-expanded', expanded);
+        group.querySelector('.service-leader-menu-category')?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const submenu = group.querySelector('.service-leader-submenu');
+        if (submenu) {
+          submenu.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+          submenu.inert = !expanded;
+        }
+      });
+      document.querySelectorAll('[data-service-leader-section]').forEach((button) => {
+        const active = button.dataset.serviceLeaderSection === section;
+        button.classList.toggle('is-active', active);
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
+      let selectedPanel = null;
+      document.querySelectorAll('[data-service-leader-panel]').forEach((panel) => {
+        const active = panel.dataset.serviceLeaderPanel === section;
+        panel.hidden = !active;
+        panel.classList.toggle('is-active', active);
+        if (active) selectedPanel = panel;
+      });
+      const label = document.getElementById('serviceLeaderCurrentSectionLabel');
+      if (label) label.textContent = serviceLeaderSectionLabels[section];
+      sessionStorage.setItem('serviceLeaderSection', section);
+      if (scroll && selectedPanel) {
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        selectedPanel.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
+      }
+    }
+
+    function serviceLeaderAudienceShareCopy() {
+      return `Join the Church Cap live captions for this service: ${serviceLeaderAudienceUrl}`;
+    }
+
+    function openServiceLeaderAudienceShareDialog() {
+      const dialog = document.getElementById('audienceShareDialog');
+      const link = document.getElementById('audienceShareDialogLink');
+      const nativeButton = document.getElementById('audienceNativeShareButton');
+      const smsLink = document.getElementById('audienceSmsShareLink');
+      const emailLink = document.getElementById('audienceEmailShareLink');
+      const result = document.getElementById('audienceShareDialogResult');
+      if (link) link.textContent = serviceLeaderAudienceUrl;
+      if (nativeButton) nativeButton.hidden = !(window.isSecureContext && navigator.share);
+      if (smsLink) smsLink.href = `sms:?body=${encodeURIComponent(serviceLeaderAudienceShareCopy())}`;
+      if (emailLink) emailLink.href = `mailto:?subject=${encodeURIComponent('Church Cap live captions')}&body=${encodeURIComponent(serviceLeaderAudienceShareCopy())}`;
+      if (result) {
+        result.textContent = window.isSecureContext && navigator.share
+          ? 'Choose the system share menu or one of the alternatives below.'
+          : 'This local browser cannot open its system share menu, but you can still copy, text, or email the link.';
+      }
+      if (dialog?.showModal) dialog.showModal();
+    }
+
+    async function copyServiceLeaderAudienceLink() {
+      const result = document.getElementById('audienceShareDialogResult');
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(serviceLeaderAudienceUrl);
+        } else {
+          const copyArea = document.createElement('textarea');
+          copyArea.value = serviceLeaderAudienceUrl;
+          copyArea.setAttribute('readonly', '');
+          copyArea.style.position = 'fixed';
+          copyArea.style.opacity = '0';
+          document.body.appendChild(copyArea);
+          copyArea.select();
+          const copied = document.execCommand('copy');
+          copyArea.remove();
+          if (!copied) throw new Error('copy unavailable');
+        }
+        if (result) result.textContent = 'Audience link copied. Paste it into any messaging or sharing app.';
+        const panelResult = document.getElementById('serviceLeaderAudienceShareResult');
+        if (panelResult) panelResult.textContent = 'Audience link copied.';
+      } catch (_) {
+        if (result) result.textContent = `Copy this audience link manually: ${serviceLeaderAudienceUrl}`;
+      }
+    }
+
+    async function shareServiceLeaderAudienceLink() {
+      const result = document.getElementById('audienceShareDialogResult');
+      try {
+        if (window.isSecureContext && navigator.share) {
+          await navigator.share({
+            title: 'Church Cap live captions',
+            text: 'Join the live captions for this service.',
+            url: serviceLeaderAudienceUrl,
+          });
+          if (result) result.textContent = 'Caption link shared.';
+          return;
+        }
+        await copyServiceLeaderAudienceLink();
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        if (result) result.textContent = 'The system share menu could not open. Use Copy link, Text message, or Email instead.';
+      }
+    }
+
+    let serviceLeaderLastRefreshAt = 0;
+    let serviceLeaderConnectionState = 'reconnecting';
+
+    function updateServiceLeaderConnectionState(state) {
+      serviceLeaderConnectionState = state;
+      const pill = document.getElementById('serviceLeaderConnectionPill');
+      const updated = document.getElementById('serviceLeaderLastUpdated');
+      if (!pill || !updated) return;
+      pill.className = `status-pill ${state === 'connected' ? 'health-healthy' : (state === 'offline' ? 'health-poor' : 'health-attention')}`;
+      pill.textContent = state === 'connected' ? 'Connected' : (state === 'offline' ? 'Offline' : 'Reconnecting');
+      if (state !== 'connected') {
+        updated.textContent = state === 'offline' ? 'Check this phone’s network' : 'Waiting for Church Cap';
+        return;
+      }
+      const ageSeconds = Math.max(0, Math.round((Date.now() - serviceLeaderLastRefreshAt) / 1000));
+      updated.textContent = ageSeconds < 5 ? 'Updated now' : `Updated ${ageSeconds}s ago`;
+    }
 
     function serviceLeaderThemePreference() {
       const stored = localStorage.getItem('serviceLeaderTheme');
@@ -259,6 +485,8 @@
     function applyServiceLeaderTheme(preference = serviceLeaderThemePreference(), {persist = false} = {}) {
       const mode = resolveServiceLeaderTheme(preference);
       document.body.classList.toggle('light-mode', mode === 'light');
+      const logo = document.getElementById('serviceLeaderHeaderLogo');
+      if (logo) logo.src = mode === 'light' ? '/static/branding/church-cap-square-light.png' : '/static/branding/church-cap-square-dark.png';
       const toggle = document.getElementById('serviceLeaderThemeToggle');
       if (toggle) toggle.textContent = mode === 'light' ? 'Dark mode' : 'Light mode';
       if (persist) {
@@ -540,6 +768,38 @@
       return language?.name || language?.native || normalised.toUpperCase();
     }
 
+    function serviceLeaderFlagCountryCode(language) {
+      const provided = String(language?.flag_code || '').trim().toLowerCase();
+      if (/^[a-z]{2}$/.test(provided)) return provided;
+      const points = [...String(language?.flag || '').trim()].map(character => character.codePointAt(0));
+      const regionalA = 0x1F1E6;
+      if (points.length !== 2 || points.some(point => point < regionalA || point > 0x1F1FF)) return '';
+      return points.map(point => String.fromCharCode(97 + point - regionalA)).join('');
+    }
+
+    function renderServiceLeaderLanguageFlag(element, language, label, baseClass) {
+      const flagCode = serviceLeaderFlagCountryCode(language);
+      const codeLabel = String(label || '').slice(0, 3).toUpperCase();
+      element.replaceChildren();
+      element.dataset.code = codeLabel;
+      element.className = `${baseClass} ${flagCode ? 'language-flag-chip' : 'language-code-badge'}`.trim();
+      if (!flagCode) {
+        element.textContent = codeLabel;
+        return;
+      }
+      const image = document.createElement('img');
+      image.src = `/static/flags/4x3/${flagCode}.svg`;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.addEventListener('error', () => {
+        element.replaceChildren(codeLabel);
+        element.classList.remove('language-flag-chip');
+        element.classList.add('language-code-badge');
+      }, {once: true});
+      element.appendChild(image);
+    }
+
     function renderServiceLeaderTranslationActivity(translation) {
       const active = (translation.active_translated_languages || []).map(code => String(code).toLowerCase());
       const limit = Number(translation.translation_max_active_languages || 1);
@@ -565,6 +825,12 @@
       if (!card || !list) return;
       const requestsEnabled = translation.translation_language_requests_enabled !== false;
       const requests = requestsEnabled ? (translation.language_requests || []) : [];
+      const menuBadge = document.getElementById('serviceLeaderRequestMenuBadge');
+      if (menuBadge) {
+        menuBadge.textContent = String(requests.length);
+        menuBadge.hidden = !requestsEnabled || requests.length === 0;
+        menuBadge.setAttribute('aria-label', `${requests.length} pending language request${requests.length === 1 ? '' : 's'}`);
+      }
       const signature = JSON.stringify(requests);
       card.hidden = !requestsEnabled || requests.length === 0;
       if (card.dataset.signature === signature) return;
@@ -585,11 +851,8 @@
         const identity = document.createElement('span');
         identity.className = 'table-language-cell';
         const flag = document.createElement('span');
-        const flagText = String(language.flag || '').trim();
         const codeText = code.slice(0, 3).toUpperCase();
-        flag.className = `${flagText && flagText !== '🌐' ? 'language-flag-chip' : 'language-code-badge'} table-language-flag`;
-        flag.textContent = flagText && flagText !== '🌐' ? flagText : codeText;
-        flag.dataset.code = codeText;
+        renderServiceLeaderLanguageFlag(flag, language, codeText, 'table-language-flag');
         const text = document.createElement('span');
         const title = document.createElement('strong');
         title.textContent = language.name || language.native || code.toUpperCase();
@@ -712,18 +975,9 @@
           label.setAttribute('aria-selected', input.checked ? 'true' : 'false');
         });
         const flag = document.createElement('span');
-        const flagText = String(language.flag || '').trim();
         const codeText = String(language.code || '').slice(0, 3).toUpperCase();
-        flag.className = 'language-option-flag';
-        flag.dataset.code = codeText;
         flag.title = `${language.name || language.native || codeText} · ${codeText}`;
-        if (flagText && flagText !== '🌐') {
-          flag.classList.add('language-flag-chip');
-          flag.textContent = flagText;
-        } else {
-          flag.classList.add('language-code-badge');
-          flag.textContent = codeText;
-        }
+        renderServiceLeaderLanguageFlag(flag, language, codeText, 'language-option-flag');
         const text = document.createElement('span');
         text.className = 'language-option-text';
         const title = document.createElement('strong');
@@ -775,6 +1029,8 @@
         const response = await fetch('/service-leader/api/status', {cache: 'no-store'});
         if (response.status === 401) { location.replace('/service-leader/pair'); return; }
         const data = await response.json();
+        serviceLeaderLastRefreshAt = Date.now();
+        updateServiceLeaderConnectionState('connected');
         const status = data.sensitive_mode ? 'Private moment' : (data.status || 'idle');
         document.getElementById('serviceLeaderStatusPill').textContent = status;
         setActiveServiceLeaderControl(data.status || 'idle', !!data.sensitive_mode);
@@ -799,6 +1055,7 @@
           document.getElementById('sessionWarning').showModal();
         }
       } catch (_) {
+        updateServiceLeaderConnectionState(navigator.onLine === false ? 'offline' : 'reconnecting');
         document.getElementById('serviceLeaderStatusPill').textContent = 'Reconnecting…';
       }
     }
@@ -930,6 +1187,7 @@
     document.getElementById('serviceLeaderLanguageSearch').addEventListener('input', (event) => {
       renderServiceLeaderLanguageList(event.target.value);
     });
+    showServiceLeaderSection(sessionStorage.getItem('serviceLeaderSection') || 'health', {scroll: false});
     applyServiceLeaderTheme();
     requestServiceLeaderWakeLock();
     document.addEventListener('visibilitychange', refreshServiceLeaderWakeLock);
@@ -939,10 +1197,15 @@
       });
     }
     document.addEventListener('pointerdown', requestServiceLeaderWakeLock, {once: true});
+    window.addEventListener('online', () => updateServiceLeaderConnectionState('reconnecting'));
+    window.addEventListener('offline', () => updateServiceLeaderConnectionState('offline'));
     restoreServiceLeaderNotices();
     connectServiceLeaderCaptionStream();
     refreshServiceLeaderStatus();
     setInterval(refreshServiceLeaderStatus, 2500);
+    setInterval(() => {
+      if (serviceLeaderConnectionState === 'connected') updateServiceLeaderConnectionState('connected');
+    }, 15000);
   </script>
 </body>
 </html>

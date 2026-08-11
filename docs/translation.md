@@ -94,6 +94,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-small100-core.ps1
 
 Auto mode shows languages from installed packages. Church Cap tries Recommended / CTranslate2 INT8 first, then Base / Argos, then Compatibility / PyTorch SMaLL-100 for languages earlier packages cannot translate. Use this when the computer has enough memory and the church wants the broadest language coverage while still using lighter Base package / Argos packs where useful.
 
+### Tigrinya in the Recommended package
+
+SMaLL-100 and the current Argos package index do not provide English-to-Tigrinya translation, so Church Cap does not pretend that either provider supports it. The Languages page installs the Apache-2.0 `Helsinki-NLP/opus-mt-en-ti` model as part of the optional **Recommended package**, at Church Cap's pinned revision, and converts it locally to CTranslate2 INT8. Existing Recommended installations that predate Tigrinya are shown as needing repair; using the normal Recommended installer adds only missing bundle components where possible. The Tigrinya download is approximately 310 MB and is not part of normal Church Cap setup.
+
+The installer performs a local English-to-Tigrinya smoke test before reporting the bundle ready. Once verified, **Tigrinya / ትግርኛ (`ti`)** appears as an available text-caption language alongside any enabled local translation mode. It does not install spoken audio. Captions remain experimental and should be checked by a fluent speaker, especially for Scripture, names, theology, and pastoral language.
+
+Use **Operator → Languages → Language resources → Install / repair Recommended package** on macOS, Windows or Linux. There is no separate Tigrinya installation control: the normal Recommended installer owns and validates the complete bundle.
+
 ### Demo
 
 Testing only. This does not translate; it prefixes captions so you can test the routing, phone language selector, operator table, and resource safeguards.
@@ -107,7 +115,7 @@ TRANSLATION_MAX_ACTIVE_LANGUAGES=2
 
 ## Language selection
 
-The visitor language picker is a custom searchable list. It shows the languages available for the current translation mode. Language options use compact Unicode flag chips; the language code remains in the option text beside the language name instead of inside the flag chip. If a language has no flag metadata, Church Cap shows a compact code badge:
+The visitor language picker is a custom searchable list. It shows the languages available for the current translation mode. Language options use compact, locally served SVG flag chips so they render consistently on Windows, Linux and macOS without relying on emoji fonts or internet access. The language code remains in the option text beside the language name and a compact code badge appears if a flag asset cannot load:
 
 - **Off** — source language captions only. The visitor picker shows a clear unavailable message instead of offering translated-caption choices.
 - **Recommended** — SMaLL-100 supported languages when the CTranslate2/INT8 model is installed.
@@ -140,7 +148,7 @@ Result: the two most-used languages are translated; the remaining language recei
 
 This is intentional. It prevents one computer from trying to run too many translation streams on a Sunday morning.
 
-The restricted service-leader page can enable or disable translated captions and choose Automatic or Manual language availability from resources already installed by the operator. If the operator has already restricted availability, the Service Leader can only choose from that approved list. Its search results follow the same language availability rules and include flag/code chips, native names, English names, and language codes. It cannot change the provider, install models, or exceed the operator-configured active-language limit. Manual mode saves a restricted language list containing English plus the selected languages; Automatic mode lets visitor demand choose languages up to the active limit. Changes made on either page are reflected on the other page during its normal live-status refresh.
+The restricted service-leader page can enable or disable translated captions and choose Automatic or Manual language availability from resources already installed by the operator. If the operator has already restricted availability, the Service Leader can only choose from that approved list. Its search results follow the same language availability rules and include the same local SVG flag/code chips, native names, English names, and language codes. It cannot change the provider, install models, or exceed the operator-configured active-language limit. Manual mode saves a restricted language list containing English plus the selected languages; Automatic mode lets visitor demand choose languages up to the active limit. Changes made on either page are reflected on the other page during its normal live-status refresh.
 
 ## Appliance profiles
 
@@ -179,7 +187,7 @@ The v0.7.0 Faster-Whisper path requests per-word timestamps and confidence. v0.7
 
 The normal per-language queue capacity is eight. Church Cap coalesces every older queued revision for the same cue, including a stale final revision, then drops the oldest remaining draft if space is needed. If a queue contains only unrelated sealed cues, another sealed cue is accepted over capacity; a new draft is rejected until the queue drains. In-flight output is published only when its cue revision is still current. Round-robin selection prevents a busy language from starving another language. Sensitive mode and Clear erase cue and scheduler state.
 
-Service-metrics schema 11 reports this behaviour under `silero_endpoint_progress_publication_guard_v3` with numeric counts only. It records the guard strategy, speech-bounded input passes, total trailing silence trimmed, metadata-rejected and post-speech hypothesis counts, suppressed-word totals, word-timestamp passes, aligned-word totals, guarded edge words withheld/confirmed, actual recognition-pass intervals, cue processing, stable/mutable counts, cue lifetime, queue and Stop outcomes, translated draft/final publication counts, and first translated publication time measured from the first English cue update. Audio, recognition words, rejected wording, times, confidence values, captions, and translations remain excluded.
+Service-metrics schema 13 reports this behaviour under `silero_endpoint_progress_publication_guard_v3` with privacy-safe values only. It retains schema 12's guard strategy, speech-bounded input, trailing-silence, suppression, word-timestamp, aligned-word, guarded-edge, recognition-interval, cue, queue, Stop, translation-publication and audio-callback recovery measurements, and adds bounded Service Context mode and count fields for controlled comparisons. Audio, recognition words, rejected wording, sermon notes, context terms, timestamps, confidence values, captions, and translations remain excluded.
 
 Faster-Whisper derives word alignment from cross-attention and dynamic time warping; this improves boundary evidence but does not make Whisper a native streaming recogniser. Church Cap therefore combines alignment with local agreement and the edge guard. This follows the published Whisper-Streaming pattern of word timestamps, repeated-prefix agreement, and timestamp-driven buffer trimming without adding another model or network service. See the [Faster-Whisper word-timestamp documentation](https://github.com/SYSTRAN/faster-whisper#word-level-timestamps) and [Whisper-Streaming design](https://github.com/ufal/whisper_streaming).
 
@@ -199,11 +207,17 @@ See [TRANSLATION_MODEL_RESEARCH.md](project/TRANSLATION_MODEL_RESEARCH.md) for t
 
 The operator page **Performance** controls can switch between standard local OpenAI Whisper and the lower-latency `faster-whisper` backend without editing `.env`. The platform view auto-detects macOS, Windows, or Linux and can be changed manually if needed. Windows and Linux can use NVIDIA CUDA for Faster Whisper when CTranslate2 sees a working runtime; Windows includes an optional local runtime installer, while Linux leaves drivers and CUDA under the system administrator's package policy. On macOS, CUDA choices are hidden and OpenAI Whisper can attempt Apple Metal/MPS when PyTorch supports it. Argos Translate may still run on CPU even when Whisper uses GPU acceleration. Recommended package / CTranslate2 INT8 translation remains optional and should be validated with real speech before live use.
 
-## Measuring Translation In v0.7.4
+## Measuring Translation In v0.7.6
 
 Church Cap records privacy-safe numeric measurements for every translated language requested by a connected viewer. The current service and latest five completed summaries distinguish queue wait, provider compute, source-to-publish timing, outcomes, source-unit boundaries, draft coalescing/backpressure, durable finals, maximum queue depth, recovery, viewer-seconds, and resource pressure. Viewer counts are seeded when captions start so phones that joined beforehand are included. The implementation is not limited to Farsi or Chinese; those are the first languages being assessed with native readers.
 
 The separate anonymised service report contains only allow-listed numeric measurements and non-identifying run/configuration fields. It excludes source speech, captions, translated wording, audio and device metadata, glossary content, paths, network identifiers, operator data, and logs. The broader diagnostics file also excludes caption content but remains support-sensitive because it includes computer information and redacted logs. Follow [recorded-sermon-testing.md](recorded-sermon-testing.md) to compare repeated runs with the same recording and audience-language viewers.
+
+## Optional translated audio retained in v0.7.6
+
+Translated audio is a consumer of the existing translated-caption stream, not a second translation provider. Only an applied final translated cue is offered to the TTS manager. Drafts and later corrections are never both spoken, so a listener does not hear several versions of the same sentence. A finalized cue is generated once per language and shared among that language's opted-in listeners.
+
+The optional runtime is Sherpa-ONNX. A language appears with a **Listen** control only when its local voice manifest passes resource and licence-review checks. English never uses this feature. Generation is demand-driven, queues are bounded, and browser playback drops stale backlog rather than allowing speech to drift indefinitely behind the service. See [translated-audio.md](translated-audio.md) for setup and acceptance guidance.
 
 ## Accuracy warning
 

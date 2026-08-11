@@ -1,3 +1,4 @@
+import json
 import re
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from app.localisation import (
     validate_client_ui_catalog,
 )
 from app.i18n import SUPPORTED_LANGUAGES
+from app.tts_catalog import ALL_VOICE_CAPTION_LANGUAGES
 
 
 class ClientUiStringTests(unittest.TestCase):
@@ -55,11 +57,32 @@ class ClientUiStringTests(unittest.TestCase):
 
     def test_caption_template_i18n_keys_exist_in_english(self):
         template = Path("app/templates/captions.html").read_text(encoding="utf-8")
+        script = Path("app/static/client.js").read_text(encoding="utf-8")
         keys = set(re.findall(r'data-i18n(?:-[\\w-]+)?="([^"]+)"', template))
         english = get_client_ui_language_strings("en")
 
         self.assertTrue(keys)
         self.assertEqual(sorted(keys - set(english)), [])
+        self.assertIn('id="translationAudioToggle"', template)
+        self.assertIn('id="translationAudioPlayer"', template)
+        self.assertIn("viewerLanguage !== SOURCE_LANGUAGE", script)
+        self.assertIn("translationAudioToggle.hidden = viewerLanguage === SOURCE_LANGUAGE || !operatorEnabled", script)
+        self.assertIn("if (audioState.enabled !== true", script)
+        self.assertIn("setTranslationAudioStatus('audio_unavailable')", script)
+        self.assertIn("/ws/translation-audio?lang=", script)
+        self.assertIn("function translatedAudioLanguageCodes()", script)
+        self.assertIn("audioState.available_languages", script)
+        self.assertIn("audioBadge.className = 'language-audio-badge'", script)
+        self.assertIn("audioBadge.setAttribute('aria-label', t('listen_translation'))", script)
+        self.assertIn("const previousAudioState = translationState?.translated_audio", script)
+        self.assertIn("translated_audio: payload.data?.translated_audio || previousAudioState", script)
+        self.assertIn("await refreshLanguageMetadata({reconnectIfNeeded: false})", script)
+        self.assertIn("new Blob([bytes], {type: 'audio/wav'})", script)
+        self.assertIn("navigator.mediaSession.metadata", script)
+        self.assertIn("setTranslationAudioStatus('audio_waiting')", script)
+        self.assertIn("setTranslationAudioStatus('audio_playing')", script)
+        self.assertNotIn("decodeAudioData", script)
+        self.assertNotRegex(template.lower(), r"\\b(?:female|male|gender|voice model)\\b")
 
     def test_client_flags_keep_language_code_fallback_visible(self):
         styles = Path("app/static/styles.css").read_text(encoding="utf-8")
@@ -68,6 +91,50 @@ class ClientUiStringTests(unittest.TestCase):
         self.assertIn("content: attr(data-code);", styles)
         self.assertIn(".phone-page .language-flag-chip::after", styles)
         self.assertNotIn("content: none;", styles)
+
+    def test_every_language_flag_uses_a_bundled_cross_platform_svg(self):
+        flags = Path("app/static/flags/4x3")
+        missing = [
+            f"{language['code']} -> {language.get('flag_code', '')}"
+            for language in SUPPORTED_LANGUAGES
+            if language.get("flag_code") and not (flags / f"{language['flag_code']}.svg").is_file()
+        ]
+
+        self.assertEqual(missing, [])
+        self.assertTrue((Path("app/static/flags") / "LICENSE.flag-icons").is_file())
+        self.assertIn("/static/flags/4x3/", Path("app/static/client.js").read_text(encoding="utf-8"))
+        self.assertIn("/static/flags/4x3/", Path("app/templates/operator.html").read_text(encoding="utf-8"))
+        self.assertIn("/static/flags/4x3/", Path("app/templates/service_leader.html").read_text(encoding="utf-8"))
+
+    def test_audio_ready_language_badge_uses_the_existing_theme(self):
+        styles = Path("app/static/styles.css").read_text(encoding="utf-8")
+
+        self.assertIn(".language-audio-badge", styles)
+        self.assertIn("margin-inline-start: auto", styles)
+        self.assertIn(".light-mode .language-audio-badge", styles)
+
+    def test_every_reviewed_spoken_language_has_native_audio_ui_strings(self):
+        catalog = json.loads(Path("app/locales/client_ui.json").read_text(encoding="utf-8"))
+        locales = catalog["locales"]
+        audio_keys = {
+            "listen_translation",
+            "stop_translation_audio",
+            "audio_connecting",
+            "audio_listening",
+            "audio_waiting",
+            "audio_playing",
+            "audio_unavailable",
+            "audio_error",
+        }
+
+        for code in ALL_VOICE_CAPTION_LANGUAGES:
+            with self.subTest(language=code):
+                self.assertEqual(audio_keys - set(locales[code]), set())
+                self.assertNotEqual(locales[code]["listen_translation"], locales["en"]["listen_translation"])
+
+        script = Path("app/static/client.js").read_text(encoding="utf-8")
+        self.assertIn("translationAudioStatus.dataset.i18n = key || ''", script)
+        self.assertIn("updateTranslationAudioControl();", script)
 
     def test_client_refreshes_language_metadata_when_picker_opens(self):
         script = Path("app/static/client.js").read_text(encoding="utf-8")
@@ -144,7 +211,23 @@ class ClientUiStringTests(unittest.TestCase):
         self.assertIn("else if (seg.is_final && !hasLiveSourceUpdates && !finalSegments.length)", script)
         self.assertIn("segment.cue_id || segment.source_unit_id", script)
         self.assertIn("segment.cue_revision || segment.source_revision", script)
-        self.assertIn('/static/client.js?v=0.7.4-security-1', template)
+        self.assertIn('/static/client.js?v=0.7.6-local-flags-1', template)
+
+    def test_viewer_connections_are_released_for_safari_page_cache(self):
+        script = Path("app/static/client.js").read_text(encoding="utf-8")
+        templates = [Path(f"app/templates/{name}.html").read_text(encoding="utf-8") for name in ("captions", "display", "obs")]
+
+        self.assertIn("let captionPingTimer = null;", script)
+        self.assertIn("if (captionPingTimer) clearInterval(captionPingTimer);", script)
+        self.assertIn("if (ws !== socket || pageSuspended) return;", script)
+        self.assertIn("window.addEventListener('pagehide', suspendViewerConnections);", script)
+        self.assertIn("window.addEventListener('pageshow', resumeViewerConnections);", script)
+        self.assertIn("window.addEventListener('online'", script)
+        self.assertIn("stopTranslationAudio({silent: true});", script)
+        self.assertIn("screenWakeLock.release()?.catch?.(() => {})", script)
+        self.assertIn("revokeTranslationAudioUrl(previousUrl);", script)
+        for template in templates:
+            self.assertIn("v=0.7.6-local-flags-1", template)
 
     def test_room_display_and_obs_share_the_polished_presentation_policy(self):
         script = Path("app/static/client.js").read_text(encoding="utf-8")

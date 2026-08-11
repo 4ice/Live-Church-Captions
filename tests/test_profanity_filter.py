@@ -19,6 +19,32 @@ class ProfanityFilterTests(unittest.TestCase):
 
         self.assertEqual("That was crap.", profanity_filter.apply("That was crap.", enabled=False))
 
+    def test_masks_common_inflections_and_spaced_compounds(self):
+        profanity_filter = ProfanityFilter(extra_words_path="/path/that/does/not/exist.txt")
+
+        for phrase in (
+            "assholes",
+            "bitches",
+            "bull shit",
+            "dick head",
+            "douchebags",
+            "fucked",
+            "fuck off",
+            "mother fuckers",
+            "pissed",
+            "shitheads",
+            "wanking",
+            "whores",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertEqual("*" * len(phrase), profanity_filter.apply(phrase))
+
+    def test_keeps_ambiguous_biblical_words_available(self):
+        profanity_filter = ProfanityFilter(extra_words_path="/path/that/does/not/exist.txt")
+        wording = "The ass carried the load before the cock crowed, and Jesus spoke about hell."
+
+        self.assertEqual(wording, profanity_filter.apply(wording))
+
 
 if __name__ == "__main__":
     unittest.main()

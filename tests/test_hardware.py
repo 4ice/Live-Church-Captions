@@ -33,6 +33,21 @@ class HardwareRuntimeTests(unittest.TestCase):
         self.assertFalse(ready)
         self.assertIn("cudnn*.dll", missing)
 
+    def test_linux_cuda_requires_cublas_and_cudnn_runtime(self):
+        from unittest import mock
+        from app import hardware
+
+        def load_library(name):
+            if name == "libcublas.so.12":
+                raise OSError("not found")
+            return mock.Mock()
+
+        with mock.patch.object(hardware.ctypes, "CDLL", side_effect=load_library):
+            ready, missing = hardware._cuda_runtime_status("Linux")
+
+        self.assertFalse(ready)
+        self.assertEqual(missing, ["libcublas.so.12"])
+
 
 
 if __name__ == "__main__":

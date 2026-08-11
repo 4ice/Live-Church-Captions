@@ -1,8 +1,10 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from app.storage import clear_storage_candidates, rotate_log_file, storage_snapshot, tail_log_lines
+from app.tts_catalog import VOICE_PACKAGES
 
 
 class StorageTests(unittest.TestCase):
@@ -37,6 +39,25 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(snapshot["total_bytes"], 60)
         self.assertEqual(sum(item["bytes"] for item in snapshot["categories"]), 60)
         self.assertNotIn(str(self.root), str(snapshot))
+
+    def test_snapshot_reports_actual_reviewed_spoken_audio_model_storage(self):
+        package = VOICE_PACKAGES["es"]
+        model_folder = self.support / "tts" / "voices" / package["folder"]
+        model_folder.mkdir(parents=True)
+        (model_folder / "model.onnx").write_bytes(b"voice-model" * 8)
+        manifest = self.support / "tts" / "voices.json"
+        manifest.write_text(
+            json.dumps({"schema_version": 1, "voices": [package["entries"][0]]}),
+            encoding="utf-8",
+        )
+
+        spoken = self.snapshot()["spoken_audio"]
+
+        self.assertEqual(spoken["installed_package_count"], 1)
+        self.assertEqual(spoken["packages"][0]["id"], "es")
+        self.assertEqual(spoken["packages"][0]["bytes"], len(b"voice-model" * 8))
+        self.assertEqual(spoken["total_bytes"], len(b"voice-model" * 8))
+        self.assertNotIn(str(self.root), str(spoken))
 
     def test_active_whisper_model_is_protected_and_inactive_model_is_available(self):
         active = self.hub / "models--Systran--faster-whisper-base.en"
