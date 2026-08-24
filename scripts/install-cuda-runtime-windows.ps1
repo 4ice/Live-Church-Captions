@@ -27,7 +27,7 @@ Write-Host "Clearing pip's local package cache where possible..."
 
 Write-Host ""
 Write-Host "Downloading and force reinstalling fresh CUDA runtime wheels..."
-& $VenvPython -m pip install --force-reinstall --no-cache-dir --upgrade --extra-index-url https://pypi.ngc.nvidia.com nvidia-cuda-runtime-cu12 nvidia-cublas-cu12 "nvidia-cudnn-cu12<9"
+& $VenvPython -m pip install --force-reinstall --no-cache-dir --upgrade --extra-index-url https://pypi.ngc.nvidia.com "nvidia-cuda-runtime-cu12==12.4.127" "nvidia-cublas-cu12==12.4.5.8" "nvidia-cudnn-cu12==9.1.0.70"
 
 Write-Host ""
 Write-Host "CUDA runtime packages force reinstalled into .venv."

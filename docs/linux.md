@@ -28,13 +28,17 @@ bash setup-linux.sh
 
 1. Reads `/etc/os-release` for a friendly distro name.
 2. Detects the installed package manager.
-3. Installs Python, venv/pip support, build tools, PortAudio headers, libsndfile, curl, and unzip.
-4. Selects Python 3.12, 3.11, 3.10, or a supported `python3`, in that order.
-5. Creates `.venv` and installs Church Cap there.
+3. Installs build tools, PortAudio headers, libsndfile, curl, `tar`, CA certificates, and the distribution's normal Python support packages.
+4. Selects a compatible Python 3.10-3.13 interpreter, preferring Python 3.12. When only an incompatible system Python is available, setup downloads pinned `uv` 0.12.3 for the detected x86_64/ARM64 and glibc/musl platform, verifies its published SHA-256, and installs managed Python 3.12 beneath `.tools`. The system Python is left unchanged.
+5. Requires at least 8 GiB of filesystem headroom, creates `.venv` from that interpreter, disables pip's persistent download cache, and installs Church Cap there. If a managed account quota is smaller than the filesystem's free-space report, setup prints quota diagnostics after a failure.
 6. Detects active `firewalld` or UFW and offers the recommended audience-viewer rule after explaining its scope.
 7. If an NVIDIA driver is detected, verifies the CUDA 12 cuBLAS and cuDNN 9 libraries and offers a project-local runtime install when needed.
 
 Distro package mappings live only in `scripts/linux-system-packages.sh`. Keep new distro work in that file rather than adding branches throughout the application.
+
+Ubuntu 26.04's Python 3.14 is deliberately not used for Church Cap v0.8.0 because every pinned ML wheel is not yet available for it. No separate Python installation step is required: the verified managed Python 3.12 path handles this automatically and stays local to Church Cap. The updater preserves `.tools` along with `.venv` and user data.
+
+If setup reports `Disk quota exceeded`, free space owned by the current Linux account or ask its administrator to raise the quota. A failed attempt may leave a partial `.venv`. Rerun `bash setup-linux.sh`; when that environment is partial or incompatible, setup offers to remove only the Church Cap `.venv` and recreate it after explicit confirmation.
 
 ## AlmaLinux
 

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from app.context_prompt import _default_token_count
@@ -97,6 +98,14 @@ class ChristianGlossaryTests(unittest.TestCase):
             prompt = glossary.initial_prompt("Church audio.", max_tokens=16)
             self.assertNotIn("enormous theological expression", prompt)
             self.assertIn("grace", prompt)
+
+    def test_prompt_budget_does_not_import_a_transcription_backend(self):
+        with mock.patch("builtins.__import__", wraps=__import__) as import_module:
+            self.glossary.initial_prompt("Church service audio.", max_tokens=60)
+
+        imported_roots = {call.args[0].split(".", 1)[0] for call in import_module.call_args_list}
+        self.assertNotIn("whisper", imported_roots)
+        self.assertNotIn("numba", imported_roots)
 
 
 if __name__ == "__main__":

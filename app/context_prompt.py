@@ -45,14 +45,17 @@ class PromptBundle:
 
 
 def _default_token_count(text: str) -> int:
-    try:
-        from whisper.tokenizer import get_tokenizer
-        tokenizer = get_tokenizer(multilingual=False, language="en", task="transcribe")
-        return len(tokenizer.encode(text))
-    except Exception:
-        # Conservative fallback for installations where OpenAI Whisper is not
-        # the selected backend (or has not yet been installed).
-        return max(1, (len(text.encode("utf-8")) + 2) // 3)
+    """Estimate a conservative prompt budget without loading a speech backend.
+
+    Importing ``whisper.tokenizer`` also imports OpenAI Whisper's model and
+    Numba/LLVM runtime. Besides making a lightweight glossary calculation
+    expensive, that caused the hardened macOS engine to initialise executable
+    JIT memory even when Faster Whisper was selected. Three UTF-8 bytes per
+    token is deliberately conservative for the short English prompts built
+    here and keeps prompt construction independent of either backend.
+    """
+
+    return max(1, (len(text.encode("utf-8")) + 2) // 3)
 
 
 def build_context_prompt(

@@ -65,7 +65,12 @@ from app.metrics import (
     start_service_metrics,
 )
 from app.exporting import segments_to_srt, segments_to_vtt, segments_to_json
-from app.hardware import HardwareAccelerationStatus, detect_hardware_acceleration, resolve_whisper_runtime
+from app.hardware import (
+    HardwareAccelerationStatus,
+    detect_hardware_acceleration,
+    refresh_python_cuda_dll_dirs,
+    resolve_whisper_runtime,
+)
 from app.deployment import deployment_context
 from app.profanity_filter import ProfanityFilter
 from app.settings import get_settings
@@ -73,7 +78,7 @@ from app.networking import default_base_url, detected_local_hostname, local_host
 from app.runtime_config import load_runtime_config, set_audio_device, set_performance_config, set_privacy_config, set_profanity_filter_config, set_translation_config, set_translated_audio_config, set_security_config
 from app.i18n import LANGUAGE_BY_CODE, SOURCE_LANGUAGE, SUPPORTED_LANGUAGES, normalise_language
 from app.localisation import get_client_ui_language_strings, get_client_ui_sources, get_client_ui_strings, get_runtime_translated_client_ui_strings
-from app.paths import app_support_dir
+from app.paths import app_support_dir, resource_root, runtime_mode
 from app.service_leader_auth import SERVICE_LEADER_COOKIE_NAME, ServiceLeaderAccessManager, ServiceLeaderSession
 from app.platforms import performance_platform_key
 from app.storage import clear_storage_candidates, rotate_log_file, rotate_runtime_logs, storage_snapshot, tail_log_lines
@@ -86,13 +91,14 @@ from app.tts_catalog import (
     public_voice_catalog,
 )
 from app.updater import fetch_remote_version, is_remote_newer, launch_update_process, poll_update_process_state, update_script_for_system, version_label
+from engine.protocol import ENGINE_PROTOCOL_VERSION
 
 try:
     import sounddevice as sd
 except Exception:  # pragma: no cover - audio package may be unavailable in demo installs
     sd = None
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = resource_root()
 
 def safe_hardware_acceleration() -> dict:
     try:
@@ -351,6 +357,7 @@ _tts_install_state = {"status": "idle"}
 _tts_install_process: subprocess.Popen | None = None
 _language_requests: dict[str, dict[str, object]] = {}
 CUDA_RUNTIME_LOG_LABEL = "logs/cuda-runtime-install.log"
+CUDA_RUNTIME_REQUEST_MARKER = "cuda-install-requested.flag"
 TRANSLATION_INSTALL_LOG_LABEL = (
     r"%APPDATA%\Church Cap\logs\translation-install.log"
     if platform.system() == "Windows"
@@ -365,8 +372,35 @@ _download_handoff_tokens: dict[str, dict[str, object]] = {}
 
 
 def _installer_progress_path(kind: str) -> Path:
-    filename = "translation-install-progress.json" if kind == "translation" else "translated-audio-install-progress.json"
+    filenames = {
+        "translation": "translation-install-progress.json",
+        "tts": "translated-audio-install-progress.json",
+        "cuda": "cuda-runtime-install-progress.json",
+    }
+    try:
+        filename = filenames[kind]
+    except KeyError as exc:
+        raise ValueError("Unknown resource installer progress kind.") from exc
     return app_support_dir() / "data" / filename
+
+
+def _background_process_kwargs() -> dict[str, object]:
+    """Keep helper processes non-interactive and invisible on Windows."""
+    kwargs: dict[str, object] = {"stdin": subprocess.DEVNULL, "close_fds": True}
+    if platform.system() == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    return kwargs
+
+
+def _resource_installer_failure(log_path: Path, fallback: str) -> str:
+    """Surface the frozen helper's concise final error without dumping a log."""
+    for line in reversed(tail_log_lines(log_path, max_lines=24)):
+        marker = "Church Cap resource installation failed:"
+        if marker in line:
+            detail = line.split(marker, 1)[1].strip()
+            if detail:
+                return f"{fallback} {detail}"
+    return fallback
 
 
 def _initialise_installer_progress(kind: str, *, detail: str, items: list[dict] | None = None) -> dict:
@@ -606,12 +640,15 @@ def auth_config():
 
 
 def base_template_context(request: Request | None = None) -> dict:
+    system = platform.system()
     context = {
         "church_name": settings.church_name,
         "app_version": settings.app_version,
         "app_version_label": settings.app_version_label,
         "feedback_email": settings.feedback_email,
         "deployment": safe_deployment_context(safe_hardware_acceleration()),
+        "desktop_password_reset": system in {"Darwin", "Windows"},
+        "linux_password_reset": system == "Linux",
     }
     if request is not None:
         context["request"] = request
@@ -887,7 +924,10 @@ def update_capability_state() -> dict:
 def cuda_runtime_capability_state() -> dict:
     global _cuda_runtime_install_state
     system = platform.system()
-    if system == "Windows":
+    packaged = runtime_mode().value == "packaged"
+    if system == "Windows" and packaged:
+        script = Path(sys.executable).resolve()
+    elif system == "Windows":
         script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
     elif system == "Linux":
         script = PROJECT_ROOT / "install-cuda-runtime-linux.sh"
@@ -896,21 +936,37 @@ def cuda_runtime_capability_state() -> dict:
     if _cuda_runtime_install_state.get("status") == "installing" and _cuda_runtime_install_process is not None:
         return_code = _cuda_runtime_install_process.poll()
         if return_code is not None:
-            if return_code == 0:
+            if return_code == 0 and _windows_cuda_runtime_files_ready():
+                refresh_python_cuda_dll_dirs()
+                cache_clear = getattr(detect_hardware_acceleration, "cache_clear", None)
+                if callable(cache_clear):
+                    cache_clear()
                 _cuda_runtime_install_state = {
                     **_cuda_runtime_install_state,
                     "status": "complete",
-                    "message": "CUDA runtime installation finished. Restart Church Cap, then check CUDA again.",
+                    "message": "CUDA runtime installation finished. Check CUDA again; restart Church Cap if a model was already loaded.",
                     "return_code": return_code,
                 }
+                _cuda_runtime_request_marker_path().unlink(missing_ok=True)
             else:
+                log_path = app_support_dir() / "logs" / "cuda-runtime-install.log"
+                failure = (
+                    f"CUDA runtime installation exited with code {return_code}. Check logs/cuda-runtime-install.log."
+                    if return_code
+                    else "CUDA runtime installation finished without all required DLLs. Check logs/cuda-runtime-install.log."
+                )
                 _cuda_runtime_install_state = {
                     **_cuda_runtime_install_state,
                     "status": "error",
-                    "error": f"CUDA runtime installation exited with code {return_code}. Check logs/cuda-runtime-install.log.",
+                    "error": _resource_installer_failure(
+                        log_path,
+                        failure,
+                    ),
                     "return_code": return_code,
                 }
     state = {**_cuda_runtime_install_state}
+    if state.get("status") == "installing":
+        state["progress"] = _current_installer_progress("cuda", state.get("progress"))
     if "log" in state:
         state["log"] = CUDA_RUNTIME_LOG_LABEL
     return {
@@ -922,6 +978,20 @@ def cuda_runtime_capability_state() -> dict:
     }
 
 
+def _cuda_runtime_request_marker_path() -> Path:
+    return app_support_dir() / "data" / CUDA_RUNTIME_REQUEST_MARKER
+
+
+def _windows_cuda_runtime_files_ready() -> bool:
+    if platform.system() != "Windows":
+        return False
+    runtime_bin = app_support_dir() / "cuda-runtime" / "bin"
+    return all(
+        (runtime_bin / filename).is_file()
+        for filename in ("cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll", "cudnn64_9.dll")
+    )
+
+
 def refreshed_hardware_status() -> dict:
     cache_clear = getattr(detect_hardware_acceleration, "cache_clear", None)
     if callable(cache_clear):
@@ -929,10 +999,19 @@ def refreshed_hardware_status() -> dict:
     return safe_hardware_acceleration()
 
 
-def launch_cuda_runtime_install() -> dict:
+def launch_cuda_runtime_install(*, origin: str = "operator page") -> dict:
     global _cuda_runtime_install_process
     system = platform.system()
-    if system == "Windows":
+    packaged = runtime_mode().value == "packaged"
+    process_environment = os.environ.copy()
+    process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("cuda"))
+    process_environment["PYTHONUNBUFFERED"] = "1"
+    process_environment.pop("CHURCH_CAP_SUPERVISOR_PID", None)
+    if system == "Windows" and packaged:
+        script = Path(sys.executable).resolve()
+        command = [str(script), "--install-windows-cuda-runtime"]
+        process_environment["CHURCH_CAP_RESOURCE_INSTALL"] = "cuda"
+    elif system == "Windows":
         script = PROJECT_ROOT / "scripts" / "install-cuda-runtime-windows.ps1"
         command = [
             "powershell.exe",
@@ -949,28 +1028,34 @@ def launch_cuda_runtime_install() -> dict:
         raise RuntimeError("CUDA runtime installation is only available on Windows and Linux.")
     if not script.exists():
         raise RuntimeError("CUDA runtime installer script is missing. Re-download Church Cap and try again.")
-    log_dir = PROJECT_ROOT / "logs"
+    log_dir = app_support_dir() / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "cuda-runtime-install.log"
     rotate_log_file(log_path)
+    initial_progress = _initialise_installer_progress(
+        "cuda",
+        detail="Preparing the pinned NVIDIA CUDA 12.4 and cuDNN 9 packages.",
+    )
     with log_path.open("ab") as log:
-        log.write(b"\n--- Starting CUDA runtime installation from operator page ---\n")
-        creationflags = 0
-        if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
-            creationflags |= subprocess.CREATE_NEW_PROCESS_GROUP
-        if hasattr(subprocess, "DETACHED_PROCESS"):
-            creationflags |= subprocess.DETACHED_PROCESS
+        safe_origin = origin.replace("\r", " ").replace("\n", " ")[:80]
+        log.write(f"\n--- Starting CUDA runtime installation from {safe_origin} ---\n".encode("utf-8"))
         process = subprocess.Popen(
             command,
             cwd=str(PROJECT_ROOT),
-            stdin=subprocess.DEVNULL,
             stdout=log,
             stderr=subprocess.STDOUT,
-            creationflags=creationflags,
-            close_fds=True,
+            env=process_environment,
+            **_background_process_kwargs(),
         )
     _cuda_runtime_install_process = process
-    return {"pid": process.pid, "log": CUDA_RUNTIME_LOG_LABEL}
+    return {"pid": process.pid, "log": CUDA_RUNTIME_LOG_LABEL, "progress": initial_progress}
+
+
+def start_cuda_runtime_install(*, origin: str = "operator page") -> dict:
+    global _cuda_runtime_install_state
+    process = launch_cuda_runtime_install(origin=origin)
+    _cuda_runtime_install_state = {"status": "installing", **process}
+    return process
 
 
 def recommended_performance_config(status: dict | None = None) -> dict:
@@ -1681,6 +1766,16 @@ async def lifespan(app: FastAPI):
     rotate_runtime_logs(PROJECT_ROOT, app_support_dir())
     initialise_service_metrics_storage()
     bootstrap_auth_store(env_password=settings.operator_password, env_secret=settings.session_secret)
+    cuda_request = _cuda_runtime_request_marker_path()
+    if platform.system() == "Windows" and runtime_mode().value == "packaged" and cuda_request.is_file():
+        if _windows_cuda_runtime_files_ready():
+            cuda_request.unlink(missing_ok=True)
+        else:
+            try:
+                await asyncio.to_thread(start_cuda_runtime_install, origin="installer first-launch retry")
+            except Exception as exc:
+                global _cuda_runtime_install_state
+                _cuda_runtime_install_state = {"status": "error", "error": str(exc)}
     yield
     global _transcription_task
     if _transcription_task:
@@ -2286,6 +2381,8 @@ async def health():
         "status": hub.state().status,
         "app_version": settings.app_version,
         "app_version_label": settings.app_version_label,
+        "runtime_mode": runtime_mode().value,
+        "engine_protocol_version": ENGINE_PROTOCOL_VERSION,
     }
 
 
@@ -2690,6 +2787,7 @@ async def check_cuda_runtime(request: Request, _: None = Depends(require_operato
 
 @app.post("/api/cuda/install")
 async def install_cuda_runtime(request: Request, _: None = Depends(require_operator)):
+    global _cuda_runtime_install_state
     if not is_local_client(request):
         return JSONResponse(
             {"status": "error", "error": "Install CUDA from the Church Cap computer."},
@@ -2701,18 +2799,16 @@ async def install_cuda_runtime(request: Request, _: None = Depends(require_opera
             {"status": "error", "error": "CUDA runtime installation is only available on Windows and Linux.", "cuda_runtime": capability},
             status_code=400,
         )
-    global _cuda_runtime_install_state
     if _cuda_runtime_install_state.get("status") == "installing":
         return {"status": "installing", "cuda_runtime": capability}
     try:
-        process = await asyncio.to_thread(launch_cuda_runtime_install)
+        process = await asyncio.to_thread(start_cuda_runtime_install)
     except Exception as exc:
         _cuda_runtime_install_state = {"status": "error", "error": str(exc)}
         return JSONResponse({"status": "error", "error": str(exc), "cuda_runtime": cuda_runtime_capability_state()}, status_code=500)
-    _cuda_runtime_install_state = {"status": "installing", **process}
     return {
         "status": "installing",
-        "message": "CUDA runtime installation started. Restart Church Cap after it finishes, then check CUDA again.",
+        "message": "CUDA runtime installation started. Keep Church Cap open while it downloads and verifies the optional NVIDIA files.",
         "cuda_runtime": cuda_runtime_capability_state(),
     }
 
@@ -2827,6 +2923,9 @@ async def start_captions_action() -> dict:
     if _transcription_task and not _transcription_task.done():
         return {"status": "already_running"}
     service_context.lock_for_service()
+    # Make the safety state visible before model/audio initialisation begins so
+    # the desktop supervisor cannot quit or restart an active startup silently.
+    hub.set_status("starting")
     _transcription_task = asyncio.create_task(transcription_loop())
     return {"status": "started", "service_context": service_context.public_state()}
 
@@ -3372,6 +3471,28 @@ def translation_install_script(kind: str) -> list[str]:
     raise ValueError("Unknown translation install kind.")
 
 
+def packaged_resource_install_command() -> list[str]:
+    executable = Path(sys.executable).resolve()
+    if not executable.is_file():
+        raise RuntimeError("The packaged Church Cap engine executable was not found.")
+    return [str(executable)]
+
+
+def refresh_translation_resources() -> None:
+    """Drop parent-process caches after a resource-installer child exits."""
+    importlib.invalidate_caches()
+    try:
+        from argostranslate.translate import get_installed_languages
+
+        get_installed_languages.cache_clear()
+    except Exception:
+        pass
+    try:
+        hub.translator.unload_models()
+    except Exception:
+        pass
+
+
 def translation_install_state() -> dict:
     global _translation_install_state
     if _translation_install_process is not None and _translation_install_state.get("status") == "installing":
@@ -3379,6 +3500,8 @@ def translation_install_state() -> dict:
         _translation_install_state = {**_translation_install_state, "progress": progress}
         code = _translation_install_process.poll()
         if code is not None:
+            if code == 0:
+                refresh_translation_resources()
             kind = str(_translation_install_state.get("kind") or "")
             success_message = (
                 "Recommended language bundle installed, including Tigrinya. Select the languages needed for this service and save."
@@ -3390,6 +3513,10 @@ def translation_install_state() -> dict:
                 "status": "complete" if code == 0 else "error",
                 "returncode": code,
                 "message": success_message if code == 0 else f"Translation install failed. Check {TRANSLATION_INSTALL_LOG_LABEL}.",
+                "error": None if code == 0 else _resource_installer_failure(
+                    app_support_dir() / "logs" / "translation-install.log",
+                    f"Translation install failed. Check {TRANSLATION_INSTALL_LOG_LABEL}.",
+                ),
                 "progress": _finished_installer_progress(
                     progress,
                     success=code == 0,
@@ -3451,6 +3578,10 @@ def tts_install_state() -> dict:
                     if code == 0 and ready
                     else "Translated-audio installation did not finish successfully. Check logs/translated-audio-install.log."
                 ),
+                "error": None if code == 0 and ready else _resource_installer_failure(
+                    app_support_dir() / "logs" / "translated-audio-install.log",
+                    "Translated-audio installation did not finish successfully. Check logs/translated-audio-install.log.",
+                ),
                 "progress": _finished_installer_progress(
                     progress,
                     success=code == 0 and ready,
@@ -3478,7 +3609,7 @@ async def install_translated_audio(request: Request, __: None = Depends(require_
     state = tts_install_state()
     if state.get("status") == "installing":
         return {"status": "installing", "message": "Translated-audio installation is already running.", "install": state}
-    if not (PROJECT_ROOT / ".venv").exists():
+    if runtime_mode().value != "packaged" and not (PROJECT_ROOT / ".venv").exists():
         return JSONResponse(
             {"status": "error", "error": "No local .venv was found. Run Church Cap setup first, then return to Languages."},
             status_code=400,
@@ -3497,9 +3628,9 @@ async def install_translated_audio(request: Request, __: None = Depends(require_
             package_ids = normalise_voice_package_selection(requested)
         except ValueError as exc:
             return JSONResponse({"status": "error", "error": str(exc)}, status_code=400)
-    command = tts_install_script(package_ids)
+    command = packaged_resource_install_command() if runtime_mode().value == "packaged" else tts_install_script(package_ids)
     script_path = PROJECT_ROOT / "scripts" / ("install-tts.ps1" if platform.system() == "Windows" else "install-tts.sh")
-    if not script_path.exists():
+    if runtime_mode().value != "packaged" and not script_path.exists():
         return JSONResponse({"status": "error", "error": "The translated-audio installer script was not found."}, status_code=500)
     logs_dir = app_support_dir() / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -3521,12 +3652,17 @@ async def install_translated_audio(request: Request, __: None = Depends(require_
             process_environment = os.environ.copy()
             process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("tts"))
             process_environment["PYTHONUNBUFFERED"] = "1"
+            process_environment.pop("CHURCH_CAP_SUPERVISOR_PID", None)
+            if runtime_mode().value == "packaged":
+                process_environment["CHURCH_CAP_RESOURCE_INSTALL"] = "tts"
+                process_environment["CHURCH_CAP_RESOURCE_PACKAGES"] = ",".join(package_ids)
             _tts_install_process = subprocess.Popen(
                 command,
                 cwd=str(PROJECT_ROOT),
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
                 env=process_environment,
+                **_background_process_kwargs(),
             )
     except Exception as exc:
         _tts_install_state = {"status": "error", "error": str(exc), "log": TTS_INSTALL_LOG_LABEL}
@@ -3610,14 +3746,16 @@ async def install_translation_resources(request: Request, _: None = Depends(requ
         )
     body = await request.json()
     kind = str(body.get("kind") or "argos")
+    if kind not in {"argos", "argos_all", "ct2small100", "small100"}:
+        return JSONResponse({"status": "error", "error": "Unknown translation install kind."}, status_code=400)
     state = translation_install_state()
     if state.get("status") == "installing":
         return {"status": "installing", "message": "Translation install is already running.", "install": state}
     try:
-        command = translation_install_script(kind)
+        command = packaged_resource_install_command() if runtime_mode().value == "packaged" else translation_install_script(kind)
     except Exception as exc:
         return JSONResponse({"status": "error", "error": str(exc)}, status_code=400)
-    if not (PROJECT_ROOT / ".venv").exists():
+    if runtime_mode().value != "packaged" and not (PROJECT_ROOT / ".venv").exists():
         return JSONResponse(
             {
                 "status": "error",
@@ -3637,19 +3775,24 @@ async def install_translation_resources(request: Request, _: None = Depends(requ
         detail="Preparing the selected translation package.",
     )
     try:
-        log_file = log_path.open("a", encoding="utf-8")
-        log_file.write(f"\n[{datetime.now(timezone.utc).isoformat()}] Starting {kind} translation install\n")
-        log_file.flush()
-        process_environment = os.environ.copy()
-        process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("translation"))
-        process_environment["PYTHONUNBUFFERED"] = "1"
-        _translation_install_process = subprocess.Popen(
-            command,
-            cwd=str(PROJECT_ROOT),
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            env=process_environment,
-        )
+        with log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(f"\n[{datetime.now(timezone.utc).isoformat()}] Starting {kind} translation install\n")
+            log_file.flush()
+            process_environment = os.environ.copy()
+            process_environment[INSTALL_PROGRESS_ENV] = str(_installer_progress_path("translation"))
+            process_environment["PYTHONUNBUFFERED"] = "1"
+            process_environment.pop("CHURCH_CAP_SUPERVISOR_PID", None)
+            if runtime_mode().value == "packaged":
+                process_environment["CHURCH_CAP_RESOURCE_INSTALL"] = "translation"
+                process_environment["CHURCH_CAP_RESOURCE_KIND"] = kind
+            _translation_install_process = subprocess.Popen(
+                command,
+                cwd=str(PROJECT_ROOT),
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                env=process_environment,
+                **_background_process_kwargs(),
+            )
     except Exception as exc:
         _translation_install_state = {"status": "error", "error": str(exc), "log": TRANSLATION_INSTALL_LOG_LABEL}
         return JSONResponse({"status": "error", "error": str(exc)}, status_code=500)

@@ -2,12 +2,22 @@
 
 Church Cap is a local live-caption app for churches. It runs on the caption computer, listens to the church sound desk or USB audio interface, and gives visitors a QR code so they can read captions on their phones.
 
+Developers continuing the native desktop work should begin with [docs/project/CROSS_PLATFORM_ARCHITECTURE.md](docs/project/CROSS_PLATFORM_ARCHITECTURE.md), the [v0.8.0 implementation status](docs/project/V0.8.0_IMPLEMENTATION.md), and the [desktop update release runbook](docs/project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md). The browser application has one shared source in `app/`; macOS, Windows, and Linux must not maintain separate copies of its pages or behaviour.
+
+## Recommended Downloads
+
+- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0): install the notarized DMG in Applications.
+- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0): run the setup executable. The current Windows release is unsigned, so verify its published SHA-256 before accepting any SmartScreen warning.
+- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0): verify and extract `Church-Cap-Linux-CLI.tar.gz`, then run `bash setup-linux.sh`.
+
+The source-folder instructions below remain available for contributors and advanced installations. Mac and Windows users should normally use the native downloads above.
+
 ## First-Time Setup On Mac
 
 Open Terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.6"
+cd "$HOME/Documents/Live-Church-Captions-0.8.0"
 ```
 
 Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
@@ -23,7 +33,7 @@ Setup may take a while. It installs the local Python environment and audio depen
 Open PowerShell, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.6"
+cd "$HOME\Documents\Live-Church-Captions-0.8.0"
 ```
 
 Run setup:
@@ -47,13 +57,13 @@ If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came fro
 Open a terminal, then go to the downloaded and extracted Church Cap folder. This example assumes the folder has been moved into Documents.
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.6"
+cd "$HOME/Documents/Live-Church-Captions-0.8.0"
 bash setup-linux.sh
 ```
 
-The script detects common Linux package managers and installs the required Python, build, PortAudio, and download tools. It supports AlmaLinux/Rocky/RHEL/Fedora (`dnf`/`yum`), Ubuntu/Debian (`apt`), openSUSE (`zypper`), Arch (`pacman`), and Alpine (`apk`).
+The script detects common Linux package managers and installs the required build, PortAudio, and download tools. It supports AlmaLinux/Rocky/RHEL/Fedora (`dnf`/`yum`), Ubuntu/Debian (`apt`), openSUSE (`zypper`), Arch (`pacman`), and Alpine (`apk`).
 
-The installer keeps Python packages inside `.venv` and does not enable extra repositories or install NVIDIA drivers. On AlmaLinux and other systems using active `firewalld` or UFW, setup recommends allowing the public audience port and asks before making the change. Only TCP port 8080 (or your configured viewer port) is opened; operator port 9090 is not. Pressing Enter skips the firewall change. If a working NVIDIA driver is already present, setup also checks whether CTranslate2 can load its required CUDA 12 cuBLAS and cuDNN 9 libraries and offers to install missing runtime libraries inside `.venv`. The large optional download starts only if you explicitly answer `y` or `yes`; pressing Enter skips it. On AlmaLinux, if a system package is unavailable, check that AppStream and CRB are enabled according to your system policy.
+The installer keeps Python packages inside `.venv` and does not enable extra repositories or install NVIDIA drivers. If the distribution only provides Python 3.14 or newer, setup automatically downloads a pinned, SHA-256-verified bootstrap and installs Python 3.12 under the Church Cap folder's `.tools` directory without changing the system Python. On AlmaLinux and other systems using active `firewalld` or UFW, setup recommends allowing the public audience port and asks before making the change. Only TCP port 8080 (or your configured viewer port) is opened; operator port 9090 is not. Pressing Enter skips the firewall change. If a working NVIDIA driver is already present, setup also checks whether CTranslate2 can load its required CUDA 12 cuBLAS and cuDNN 9 libraries and offers to install missing runtime libraries inside `.venv`. The large optional download starts only if you explicitly answer `y` or `yes`; pressing Enter skips it. On AlmaLinux, if a system package is unavailable, check that AppStream and CRB are enabled according to your system policy.
 
 Seeing a CUDA version in `nvidia-smi` is not enough by itself: that confirms the driver capability, not that `libcublas.so.12` and `libcudnn.so.9` are installed and visible to Church Cap. For an existing Linux install, repair the local runtime with:
 

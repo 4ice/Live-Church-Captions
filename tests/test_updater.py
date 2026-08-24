@@ -31,7 +31,7 @@ class UpdaterVersionTests(unittest.TestCase):
         self.assertEqual(Settings.model_fields["app_version"].default, APP_VERSION)
 
     def test_macos_and_linux_updater_reads_code_owned_version(self):
-        source = (Path(__file__).resolve().parents[1] / "update-macos.sh").read_text(encoding="utf-8")
+        source = (Path(__file__).resolve().parents[1] / "scripts" / "update-unix.sh").read_text(encoding="utf-8")
         self.assertIn("APP_VERSION", source)
         self.assertIn("app_version[[:space:]]*:", source)
         self.assertIn('Current version: v${CURRENT_VERSION:-unknown}', source)

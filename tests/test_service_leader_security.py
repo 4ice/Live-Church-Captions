@@ -8,6 +8,7 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
         cls.main = Path("app/main.py").read_text(encoding="utf-8")
         cls.auth = Path("app/service_leader_auth.py").read_text(encoding="utf-8")
         cls.runner = Path("scripts/run-dual.py").read_text(encoding="utf-8")
+        cls.engine = Path("engine/entrypoint.py").read_text(encoding="utf-8")
         cls.service_leader = Path("app/templates/service_leader.html").read_text(encoding="utf-8")
         cls.pair = Path("app/templates/service_leader_pair.html").read_text(encoding="utf-8")
         cls.login = Path("app/templates/login.html").read_text(encoding="utf-8")
@@ -71,8 +72,9 @@ class ServiceLeaderSecuritySourceTests(unittest.TestCase):
             self.assertNotIn(forbidden, self.service_leader)
 
     def test_operator_listener_relies_on_application_boundary(self):
-        self.assertIn("operator_host = settings.host", self.runner)
-        self.assertIn("service-leader session", self.runner)
+        self.assertIn("from engine.entrypoint import main", self.runner)
+        self.assertIn("operator_host = settings.host", self.engine)
+        self.assertIn("service-leader session", self.engine)
 
     def test_service_leader_language_control_preserves_operator_provider(self):
         route = self.main.split('async def service_leader_update_languages', 1)[1].split('@app.post("/api/service-leader/revoke")', 1)[0]

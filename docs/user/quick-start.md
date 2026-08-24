@@ -1,6 +1,6 @@
 # Church Cap Quick Start Guide
 
-Version: v0.7.6
+Version: v0.8.0
 
 This guide is for the person setting up Church Cap for a church service.
 
@@ -28,72 +28,49 @@ Use **Benchmark** before selecting heavier models such as `small.en` or `medium.
 
 ## First-Time Setup On Mac
 
-1. Open Terminal.
-2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
+1. Open the [Mac — Apple Silicon release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0) and download `Church-Cap-v0.8.0-macOS-Apple-Silicon.dmg`.
+2. Open the DMG and drag **Church Cap** to **Applications**.
+3. Open Church Cap from Applications and allow microphone access when macOS asks.
+4. Church Cap opens the existing browser setup page. Create the operator password there.
 
-```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.6"
-```
-
-3. Run setup. Use `bash` for this first command because the setup script may not be executable yet. The setup script repairs permissions for the other Church Cap scripts automatically.
-
-```bash
-bash setup-macos.sh
-```
-
-4. Wait for setup to finish, then continue to **Start Church Cap** below.
-
-The setup script installs the local Python environment and audio dependencies. It also offers translation-resource choices for common Base package / Argos packs, all Base package / Argos packs, optional Recommended package / CTranslate2 INT8, optional Compatibility package / PyTorch SMaLL-100, or skipping translation resources until later. It only installs Python packages inside the Church Cap folder's `.venv`.
-
-If setup asks whether to set the Mac hostname to `church-cap.local`, choose yes if this Mac will normally run captions.
+The Mac release is Developer-ID signed, notarized, and stapled. It does not require Terminal for normal use.
 
 ## First-Time Setup On Windows
 
-1. Open PowerShell.
-2. Go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
+1. Open the [Windows — 64-bit release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0) and download the Church Cap setup executable.
+2. Run setup. Windows may show a SmartScreen warning because the v0.8.0 Windows build is currently unsigned; check that the file hash matches the SHA-256 value published with the release before continuing.
+3. Leave optional NVIDIA CUDA unchecked unless this computer has a supported NVIDIA GPU. If selected, setup downloads verified per-user CUDA 12.4/cuDNN 9 runtime files. An interrupted download safely retries after first launch and can also be repaired later from **Operator → Performance**.
+4. Open Church Cap from the Start menu. No Command Prompt window is required.
 
-```powershell
-cd "$HOME\Documents\Live-Church-Captions-0.7.6"
-```
+Church Cap keeps mutable application data under `%APPDATA%\Church Cap`. English captions work on CPU when CUDA is not installed or not ready.
 
-3. Run setup.
-
-```powershell
-.\setup-windows.cmd
-```
-
-4. Wait for setup to finish, then continue to **Start Church Cap** below.
-
-The setup script installs the local Python environment and app dependencies, checks CUDA/GPU support, and offers translation-resource choices for common Base package / Argos packs, all Base package / Argos packs, optional Recommended package / CTranslate2 INT8, optional Compatibility package / PyTorch SMaLL-100, or skipping translation resources until later. Recommended package / CTranslate2 INT8 is the preferred efficient path for heavier translation work, while Base package / Argos remains available as fallback. If Python is missing and Windows Package Manager is available, setup can offer to install Python 3.12 first. If an NVIDIA GPU is visible but CUDA is not ready for faster-whisper, setup can offer to install or force reinstall local CUDA 12 runtime packages into Church Cap's `.venv`. The force reinstall bypasses pip's cache and downloads fresh CUDA runtime wheels. If CUDA is not ready, Church Cap falls back to CPU.
-
-You can also run the optional GPU runtime installer later:
-
-```powershell
-.\install-cuda-runtime-windows.cmd
-```
-
-If Windows says `UnauthorizedAccess`, scripts are disabled, or the file came from another computer, use `setup-windows.cmd`. If it is still blocked, right-click the downloaded zip or Church Cap folder, choose **Properties**, tick **Unblock** if shown, then try again.
+If optional CUDA does not become ready, keep Church Cap open and review **Operator → Performance** for installation progress. The installer hand-off record is `%APPDATA%\Church Cap\logs\cuda-installer-handoff.log`; the background download record is `%APPDATA%\Church Cap\logs\cuda-runtime-install.log`. These logs contain no caption text.
 
 ## First-Time Setup On Linux
 
-Open a terminal, then go to the Church Cap folder. This example assumes the downloaded and extracted folder has been moved into Documents.
+1. Open the [Linux — 64-bit CLI release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0) and download both `Church-Cap-Linux-CLI.tar.gz` and `Church-Cap-Linux-CLI.tar.gz.sha256`.
+2. In a terminal, verify and extract the curated archive:
 
 ```bash
-cd "$HOME/Documents/Live-Church-Captions-0.7.6"
+sha256sum -c Church-Cap-Linux-CLI.tar.gz.sha256
+tar -xzf Church-Cap-Linux-CLI.tar.gz
+cd Church-Cap-Linux-CLI
 bash setup-linux.sh
 ```
 
-The installer detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`. It installs only the system prerequisites and creates a project-local `.venv`. AlmaLinux and related RHEL-family systems use `dnf`/`yum`; the installer prefers Python 3.12 or 3.11 when available. It does not change repository configuration or install NVIDIA drivers. If active `firewalld` or UFW is present, setup recommends allowing the public viewer port, normally TCP 8080, and asks before changing it; operator port 9090 remains closed. When a working NVIDIA driver is already present, setup separately checks for the CUDA 12 cuBLAS and cuDNN 9 runtime libraries required by CTranslate2 and can install them inside `.venv`.
-
-Linux keeps both QR codes visible. Unless a hostname was explicitly configured through local DNS/mDNS, `CAPTION_LOCAL_HOSTNAME`, or `PUBLIC_BASE_URL`, the hostname QR is marked as requiring setup and the direct-IP QR is recommended. Merely naming the computer does not guarantee that a `.local` address works on audience phones.
-
-`nvidia-smi` can show CUDA support even when `libcublas.so.12` or `libcudnn.so.9` is absent from the application loader path. If an existing Linux installation reports either library missing, run `./install-cuda-runtime-linux.sh` and restart with `./start-linux.sh`. The start script exposes the project-local NVIDIA library directories before Python launches.
-
-Start later with:
+3. Start Church Cap later with:
 
 ```bash
 ./start-linux.sh
 ```
+
+The Linux download is a terminal-first source package rather than a desktop wrapper. It contains the shared Church Cap runtime without repository history, Mac/Windows artifacts, tests, or developer build caches. Setup detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`, installs only system prerequisites, and keeps Python packages inside this folder's `.venv`. It does not install NVIDIA drivers or enable extra repositories.
+
+Allow at least 8 GiB free for the initial Python environment. Church Cap v0.8.0 uses Python 3.10-3.13. If Linux only provides Python 3.14 or newer, setup automatically downloads a pinned, SHA-256-verified bootstrap and keeps managed Python 3.12 in this Church Cap folder; it does not change the system Python. This supports the Python 3.14 supplied by Ubuntu 26.04 without asking the user to find a separate installer. Setup disables pip's persistent cache to reduce temporary storage. If it reports `Disk quota exceeded`, free space owned by that Linux user or ask the administrator to raise the account quota, then rerun setup. A partial incompatible Church Cap `.venv` can be removed and recreated from the setup prompt; no other folder is removed.
+
+Linux keeps both QR codes visible. The direct-IP QR is recommended unless local DNS/mDNS is configured. If a working NVIDIA driver is present but CTranslate2 reports missing `libcublas.so.12` or `libcudnn.so.9`, run `./install-cuda-runtime-linux.sh` and restart with `./start-linux.sh`.
+
+Contributors and advanced users can still use a source checkout and the platform setup scripts documented in the repository README.
 
 ## Church Cap Box Profiles
 
@@ -358,8 +335,8 @@ Linux:
 ./update-linux.sh
 ```
 
-You can also use **Updates** on the operator page. Church Cap checks the latest GitHub release tag first, tells you if it is already up to date, asks before updating, checks the downloaded files, replaces this folder in place, and restarts the app.
+You can also use **Updates** on the operator page. Source installations check their platform release channel, tell you if the current version is up to date, ask before updating, check the downloaded files, replace the application files in place, and restart the app. The native Mac/Windows applications use their separately signed desktop update channels after those channels are published.
 
 The updater preserves `.env`, `.venv`, `data/`, `logs/`, `certs/`, `config/glossary.csv`, and `config/profanity_filter.txt`. The displayed app version is code-owned so a stale `APP_VERSION` in `.env` cannot keep Windows showing an older release after an update.
 
-The updater checks the ZIP, required release files, release version, staged Python syntax, and SHA-256 file checksums before and after copying. If the internet drops during download or dependency installation, the current app is left alone. During replacement, Church Cap keeps a rollback backup in `data/update-backups/` and restores it automatically if the copy or checksum check fails.
+The source updater checks its downloaded release archive, required release files, release version, staged Python syntax, and SHA-256 file checksums before and after copying. Linux selects the curated `Church-Cap-Linux-CLI.tar.gz` asset and verifies its separately published SHA-256 before extraction. If the internet drops during download or dependency installation, the current app is left alone. During replacement, Church Cap keeps a rollback backup in `data/update-backups/` and restores it automatically if the copy or checksum check fails.

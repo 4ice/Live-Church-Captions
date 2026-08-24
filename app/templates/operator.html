@@ -6,7 +6,7 @@
   <meta name="church-cap-csrf-token" content="{{ csrf_token }}">
   <title>Church Cap · Operator</title>
   <link rel="icon" type="image/png" href="/static/branding/church-cap-square-dark.png">
-  <link rel="stylesheet" href="/static/styles.css?v=0.7.6-ui-3">
+  <link rel="stylesheet" href="/static/styles.css?v=0.8.0-ui-1">
 </head>
 <body class="operator-page glass-page{% if deployment.capabilities.simple_operator %} appliance-simple-operator{% endif %}" data-deployment-profile="{{ deployment.capabilities.profile }}" data-appliance="{{ 'true' if deployment.capabilities.is_appliance else 'false' }}">
   <script>
@@ -478,11 +478,11 @@
             <div id="cudaTroubleshooter" class="cuda-panel" hidden>
               <div>
                 <strong>NVIDIA CUDA troubleshooting</strong>
-                <p class="muted">Use this if NVIDIA/CUDA is visible on the computer but Church Cap still falls back to CPU. Install/repair downloads local CUDA runtime packages into this Church Cap folder's <code>.venv</code>, so it needs internet access. Restart Church Cap after it finishes.</p>
+                <p class="muted">Use this if NVIDIA/CUDA is visible on the computer but Church Cap still falls back to CPU. Install/repair downloads about 1.1 GB of pinned NVIDIA CUDA 12.4 and cuDNN 9 runtime files, verifies them, and keeps them in your per-user Church Cap data. It needs internet access but does not require the full CUDA Toolkit.</p>
               </div>
               <div class="button-row spacious-actions">
                 <button type="button" class="secondary-button" onclick="checkCudaRuntime()">Check CUDA</button>
-                <button type="button" class="secondary-button" onclick="installCudaRuntime()">Install / repair CUDA runtime</button>
+                <button id="cudaInstallButton" type="button" class="secondary-button" onclick="installCudaRuntime()">Install / repair CUDA runtime</button>
               </div>
               <p id="cudaResult" class="muted small-result"></p>
             </div>
@@ -2330,8 +2330,17 @@
       const result = document.getElementById('cudaResult');
       if (!result || !cudaRuntime) return;
       const state = cudaRuntime.state || {};
+      const button = document.getElementById('cudaInstallButton');
+      if (button) {
+        button.disabled = state.status === 'installing';
+        button.textContent = state.status === 'installing' ? 'Installing CUDA runtime…' : 'Install / repair CUDA runtime';
+      }
       if (state.status === 'installing') {
-        result.textContent = `CUDA runtime installation is running. Log: ${state.log || cudaRuntime.log || 'logs/cuda-runtime-install.log'}. Restart Church Cap when it finishes.`;
+        const progress = state.progress || {};
+        const percent = Number.isFinite(Number(progress.percent)) ? ` ${Math.round(Number(progress.percent))}% —` : '';
+        result.textContent = `CUDA runtime installation is running.${percent} ${progress.detail || 'Preparing verified NVIDIA runtime files.'} Log: ${state.log || cudaRuntime.log || 'logs/cuda-runtime-install.log'}.`;
+        const hardware = document.getElementById('performanceHardware');
+        if (hardware) hardware.textContent = `CUDA runtime installation is running${percent} ${progress.detail || 'Preparing verified NVIDIA runtime files.'} This download can take several minutes; keep Church Cap open. CPU / int8 remains available until it finishes.`;
       } else if (state.status === 'complete') {
         result.textContent = state.message || 'CUDA runtime installation finished. Restart Church Cap, then check CUDA again.';
       } else if (state.status === 'error') {
@@ -2359,11 +2368,14 @@
 
     async function installCudaRuntime() {
       const result = document.getElementById('cudaResult');
-      if (result) result.textContent = 'Starting CUDA runtime installation…';
+      const button = document.getElementById('cudaInstallButton');
+      if (button) button.disabled = true;
+      if (result) result.textContent = 'Starting the verified CUDA runtime download (about 1.1 GB)…';
       const res = await fetch('/api/cuda/install', {method: 'POST'});
       if (res.status === 401) { location.href = '/login'; return; }
       const data = await res.json();
       if (!res.ok || data.status === 'error') {
+        if (button) button.disabled = false;
         if (result) result.textContent = data.error || 'Could not start CUDA runtime installation.';
         return;
       }

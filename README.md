@@ -1,6 +1,6 @@
 # Church Cap
 
-Version: **v0.7.6**
+Version: **v0.8.0**
 
 ![Church Cap logo](assets/branding/church-cap-wide-dark.png)
 
@@ -9,6 +9,14 @@ Church Cap is an open-source, local-first live caption app for churches.
 Visitors scan a QR code, open a local web page on the church Wi-Fi, and read live captions on their phone. The app transcribes one audio feed from the church sound desk or audio interface, then broadcasts the captions to phones, room displays, and OBS browser sources over the local network.
 
 For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
+
+## Download Church Cap
+
+- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0): download the notarized DMG, drag Church Cap to Applications, then open it.
+- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0): download and run the setup executable. The v0.8.0 Windows build is currently unsigned, so Windows may show a SmartScreen warning.
+- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0): download `Church-Cap-Linux-CLI.tar.gz`, verify its published SHA-256 file, extract it, and run `bash setup-linux.sh`.
+
+The release downloads all use the single shared browser application in `app/`. Source checkout instructions remain below for contributors and advanced installations.
 
 ## Project Layout
 
@@ -25,10 +33,13 @@ For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
 - `app/resources/christian_prompt_terms.txt` and `app/resources/christian_corrections.csv` — versioned Christian recognition hints and conservative built-in caption corrections. The bounded prompt balances theology, biblical names, books/places and Christian phrases by category and priority. Built-ins update with Church Cap; local glossary overrides remain preserved.
 - `docs/` — user guides, legal notes, architecture, networking, and translation docs.
 - `docs/project/ROADMAP_TO_V1.md` — staged route from the v0.6 preview architecture to v1.0.0.
-- `docs/project/V0.7.6_IMPLEMENTATION.md` — current v0.7.6 implementation status, retained baseline, and Service Context workstreams.
+- `docs/project/CROSS_PLATFORM_ARCHITECTURE.md` — shared-core and platform-wrapper boundaries for Mac, Windows, and Linux.
+- `docs/project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md` — maintainer procedure for signed desktop update channels and platform releases.
+- `docs/project/V0.8.0_IMPLEMENTATION.md` — current v0.8.0 implementation status and remaining work.
+- `docs/project/V0.8.0_DEPENDENCY_AUDIT.md` — reviewed upstream dependency findings and narrowly documented exceptions.
+- `docs/project/V0.7.6_IMPLEMENTATION.md` — retained v0.7.6 baseline and Service Context workstreams.
 - `docs/project/V0.7.6_SERVICE_CONTEXT_PLAN.md` — proposed per-service sermon-note context, glossary improvement, privacy, performance, testing, and rollout plan.
 - `docs/project/V0.7.6_RELEASE_NOTES.md` — draft release notes and current branch status for v0.7.6.
-- `docs/project/Church_Cap_v0.7.6_Action_Plan_ARCHIVED_2026-08-06.docx` — archived 6 August planning snapshot retained for historical context; use the implementation status and release notes for current behaviour.
 - `docs/translated-audio.md` — optional local translated-audio setup, voice-pack review, and testing guide.
 - `docs/legal/SPOKEN_LANGUAGE_MODELS.md` — per-language voice source, size, licence and attribution/share-alike notices.
 - `docs/project/TRANSLATION_MODEL_RESEARCH.md` — commercial/open-source model and licence audit for contextual and Chinese translation.
@@ -150,7 +161,7 @@ http://192.168.1.50:8080/
 
 Church Cap can use either the standard OpenAI Whisper backend or the lower-latency `faster-whisper` backend. The operator page includes a **Performance** section with a speed/accuracy slider and advanced controls for platform view, backend, model size, processor, compute type, caption refresh, listening window, silence timing, and stability checks. These settings are saved automatically in the per-user runtime config and apply the next time captions are started. To protect the live audience feed, performance controls are locked while captions are running.
 
-The **Performance platform** setting defaults to auto-detect. On Windows, `faster-whisper` can use CUDA through CTranslate2 when the GPU, drivers, and required CUDA runtime DLLs are available. If CUDA is not ready, setup can offer to install or force reinstall local NVIDIA CUDA 12 runtime packages inside `.venv`, or you can run `.\install-cuda-runtime-windows.cmd` later. The force reinstall clears pip's CUDA wheel cache and downloads fresh local runtime wheels. On Windows and Linux, the operator Performance panel shows **Check CUDA** and **Install / repair CUDA runtime** controls. Selecting **GPU / NVIDIA CUDA** forces a CUDA load attempt first for Faster Whisper; if the runtime cannot load CUDA, Church Cap falls back to CPU and reports the reason in the operator status. The built-in CUDA runtime installer targets Faster Whisper/CTranslate2 rather than PyTorch/OpenAI Whisper, so CUDA recommendations stay on Faster Whisper. On macOS, the processor choices hide CUDA and can show Apple GPU / Metal for OpenAI Whisper when PyTorch supports MPS; diagnostics and the operator strip report Apple chip/GPU information and unified memory more clearly. Argos Translate remains local and experimental and may still run on CPU. Recommended package uses a converted SMaLL-100 model through CTranslate2/INT8 and can use CUDA where CTranslate2 supports it. Compatibility package still uses PyTorch and may use CUDA if PyTorch sees it.
+The **Performance platform** setting defaults to auto-detect. On Windows, `faster-whisper` can use CUDA through CTranslate2 when the GPU, drivers, and required CUDA runtime DLLs are available. Source setup can offer to install or force reinstall exact CUDA 12.4 runtime/cuBLAS and cuDNN 9 packages inside `.venv`, or you can run `.\install-cuda-runtime-windows.cmd` later. The packaged Windows application instead verifies the exact allow-listed wheels and installs only their required DLL/licence files beneath per-user Church Cap application data; it does not need a source checkout or `.venv`. The operator Performance panel shows **Check CUDA** and **Install / repair CUDA runtime** controls, and the Windows installer offers the same approximately 1.1 GB runtime as an explicit unchecked option. Selecting **GPU / NVIDIA CUDA** forces a CUDA load attempt first for Faster Whisper; if the runtime cannot load CUDA, Church Cap falls back to CPU and reports the reason in the operator status. The built-in CUDA runtime installer targets Faster Whisper/CTranslate2 rather than PyTorch/OpenAI Whisper, so CUDA recommendations stay on Faster Whisper. On macOS, the processor choices hide CUDA and can show Apple GPU / Metal for OpenAI Whisper when PyTorch supports MPS; diagnostics and the operator strip report Apple chip/GPU information and unified memory more clearly. Argos Translate remains local and experimental and may still run on CPU. Recommended package uses a converted SMaLL-100 model through CTranslate2/INT8 and can use CUDA where CTranslate2 supports it. Compatibility package still uses PyTorch and may use CUDA if PyTorch sees it.
 
 The local CUDA runtime installer is usually easier than installing the full NVIDIA CUDA Toolkit. Windows users who already manage NVIDIA tooling can instead install CUDA 12.x and cuDNN system-wide from NVIDIA, then rerun `.\start-windows.cmd`.
 
@@ -163,7 +174,9 @@ bash setup-linux.sh
 ./start-linux.sh
 ```
 
-The setup script detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`, installs Python/build/audio prerequisites through that package manager, and keeps all Python packages inside `.venv`. It is intended for AlmaLinux, Rocky Linux, RHEL-family systems, Fedora, Ubuntu, Debian, openSUSE, Arch Linux, Alpine Linux, and close derivatives.
+The setup script detects `apt`, `dnf`, `yum`, `zypper`, `pacman`, or `apk`, installs build/audio prerequisites through that package manager, and keeps all Python packages inside `.venv`. It is intended for AlmaLinux, Rocky Linux, RHEL-family systems, Fedora, Ubuntu, Debian, openSUSE, Arch Linux, Alpine Linux, and close derivatives.
+
+The v0.8.0 runtime requires Python 3.10-3.13 and at least 8 GiB of installation headroom. Setup prefers a compatible installed Python. If the distribution only supplies Python 3.14 or newer—as Ubuntu 26.04 does—it downloads a pinned `uv` bootstrap for the detected x86_64/ARM64 and glibc/musl platform, verifies its SHA-256, and installs Python 3.12 under Church Cap's own `.tools` directory. It does not replace or reconfigure the system Python. Pip's persistent cache is disabled to reduce temporary disk usage. If setup reports `Disk quota exceeded`, free space for the current Linux account or ask the administrator to raise its quota, then rerun setup; it can offer to recreate only an incompatible partial Church Cap `.venv`.
 
 On AlmaLinux, Church Cap prefers an available Python 3.12 or 3.11 because the operating system's default `python3` may be too old. The installer does not enable extra repositories automatically. If `dnf` cannot find PortAudio development packages, enable the normal AppStream/CRB repositories according to your system policy and rerun setup. When active `firewalld` or UFW is detected, setup recommends an audience-only TCP rule and requires explicit confirmation before adding it. The rule uses the configured viewer port, normally 8080, and never opens operator port 9090.
 
@@ -488,7 +501,7 @@ cp env.example .env
 ./scripts/run-dev.sh
 ```
 
-Recommended Python version: **3.12**. Python 3.10 or newer is required by the pinned dependency set.
+Recommended Python version: **3.12**. Church Cap v0.8.0's pinned dependency set supports Python 3.10 through 3.13.
 
 Run the core checks:
 

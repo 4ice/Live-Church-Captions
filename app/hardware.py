@@ -12,6 +12,8 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from app.paths import app_support_dir
+
 
 _DLL_DIRECTORY_HANDLES = []
 
@@ -177,6 +179,7 @@ def _python_cuda_dll_dirs() -> tuple[Path, ...]:
         return ()
 
     roots: list[Path] = []
+    packaged_runtime_bin = app_support_dir() / "cuda-runtime" / "bin"
     try:
         roots.extend(Path(p) for p in site.getsitepackages())
     except Exception:
@@ -187,7 +190,7 @@ def _python_cuda_dll_dirs() -> tuple[Path, ...]:
         pass
     roots.append(Path(sys.prefix) / "Lib" / "site-packages")
 
-    dirs: list[Path] = []
+    dirs: list[Path] = [packaged_runtime_bin] if packaged_runtime_bin.is_dir() else []
     seen: set[str] = set()
     for root in roots:
         nvidia_root = root / "nvidia"
@@ -202,6 +205,12 @@ def _python_cuda_dll_dirs() -> tuple[Path, ...]:
             seen.add(key)
             dirs.append(candidate)
     return tuple(dirs)
+
+
+def refresh_python_cuda_dll_dirs() -> tuple[str, ...]:
+    """Re-scan optional per-user CUDA DLLs after an installer child exits."""
+    _python_cuda_dll_dirs.cache_clear()
+    return prepare_python_cuda_dll_dirs()
 
 
 def prepare_python_cuda_dll_dirs() -> tuple[str, ...]:

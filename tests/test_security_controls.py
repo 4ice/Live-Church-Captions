@@ -7,6 +7,7 @@ from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
 from starlette.requests import Request
+from fastapi import HTTPException
 
 from app.auth import (
     AuthConfig,
@@ -14,8 +15,10 @@ from app.auth import (
     auth_form_request_is_valid,
     create_form_csrf_token,
     create_operator_csrf_token,
+    operator_mutation_origin_is_valid,
     protect_auth_storage,
     request_has_same_origin,
+    require_operator_mutation,
     verify_form_csrf_token,
     verify_operator_csrf_token,
 )
@@ -24,12 +27,14 @@ from app.translation_packages import validate_argos_package_archive
 
 def make_request(
     *,
+    path: str = "/api/start",
     origin: str | None = None,
     referer: str | None = None,
     host: str = "churchcap.local:9090",
     forwarded_host: str | None = None,
     forwarded_proto: str | None = None,
     fetch_site: str | None = None,
+    session_token: str | None = None,
 ) -> Request:
     headers = [(b"host", host.encode("ascii"))]
     if origin:
@@ -42,13 +47,15 @@ def make_request(
         headers.append((b"x-forwarded-proto", forwarded_proto.encode("ascii")))
     if fetch_site:
         headers.append((b"sec-fetch-site", fetch_site.encode("ascii")))
+    if session_token:
+        headers.append((b"cookie", f"caption_operator_session={session_token}".encode("ascii")))
     return Request(
         {
             "type": "http",
             "method": "POST",
             "scheme": "http",
-            "path": "/api/start",
-            "raw_path": b"/api/start",
+            "path": path,
+            "raw_path": path.encode("ascii"),
             "query_string": b"",
             "headers": headers,
             "client": ("127.0.0.1", 50000),
@@ -124,6 +131,43 @@ class AuthenticationSecurityTests(unittest.TestCase):
             )
         )
 
+    def test_easy_offline_accepts_valid_remote_operator_mutation_without_weakening_secure_modes(self):
+        remote_request = make_request(
+            path="/logout",
+            origin="http://church-av-console.local:9090",
+            host="192.168.50.20:9090",
+            fetch_site="same-site",
+            session_token="remote-session",
+        )
+        cross_site_request = make_request(
+            path="/logout",
+            origin="https://example.invalid",
+            host="192.168.50.20:9090",
+            fetch_site="cross-site",
+            session_token="remote-session",
+        )
+        config = AuthConfig(password=None, secret="operator-secret", max_age_seconds=60)
+        csrf_token = create_operator_csrf_token("remote-session", config)
+
+        easy_offline = {"security_mode": "easy_offline", "lock_operator_to_localhost": False}
+        with patch("app.runtime_config.load_runtime_config", return_value=easy_offline), patch(
+            "app.auth.get_auth_config", return_value=config
+        ):
+            self.assertTrue(operator_mutation_origin_is_valid(remote_request))
+            require_operator_mutation(remote_request, csrf_token)
+            self.assertFalse(operator_mutation_origin_is_valid(cross_site_request))
+            with self.assertRaises(HTTPException):
+                require_operator_mutation(cross_site_request, csrf_token)
+
+        for secure_mode in ("secure_operator", "managed_https"):
+            runtime = {"security_mode": secure_mode, "lock_operator_to_localhost": True}
+            with patch("app.runtime_config.load_runtime_config", return_value=runtime), patch(
+                "app.auth.get_auth_config", return_value=config
+            ):
+                self.assertFalse(operator_mutation_origin_is_valid(remote_request))
+                with self.assertRaises(HTTPException):
+                    require_operator_mutation(remote_request, csrf_token)
+
     def test_auth_form_accepts_upgrade_or_proxy_safe_proof(self):
         same_origin = make_request(origin="http://churchcap.local:9090")
         self.assertTrue(auth_form_request_is_valid(same_origin, None, None))
@@ -154,14 +198,36 @@ class AuthenticationSecurityTests(unittest.TestCase):
         operator = (root / "app/templates/operator.html").read_text(encoding="utf-8")
         login = (root / "app/templates/login.html").read_text(encoding="utf-8")
         setup = (root / "app/templates/setup.html").read_text(encoding="utf-8")
+        setup_password_script = (root / "app/static/setup-password.js").read_text(encoding="utf-8")
         account = (root / "app/templates/account.html").read_text(encoding="utf-8")
         self.assertIn("require_operator_mutation(request, csrf_token)", main)
         self.assertIn('headers.set(\'X-CSRF-Token\', csrfToken)', operator)
         self.assertGreaterEqual(operator.count('name="csrf_token"'), 1)
         self.assertGreaterEqual(login.count('name="csrf_token"'), 2)
         self.assertIn('name="csrf_token"', setup)
+        self.assertIn('id="passwordRequirements"', setup)
+        self.assertIn("At least 8 characters", setup)
+        self.assertIn("Both password entries must match", setup)
+        self.assertIn('id="passwordValidationMessage"', setup)
+        self.assertLess(setup.index('value="secure_operator"'), setup.index('value="easy_offline"'))
+        self.assertIn('recommended-badge">Recommended', setup)
+        self.assertIn('caution-badge">Caution', setup)
+        self.assertIn('id="easyOfflineInfoButton"', setup)
+        self.assertIn('id="easyOfflineInfoDialog"', setup)
+        self.assertIn("Operator controls can be reached from other devices on the same LAN.", setup)
+        self.assertIn("Advantage", setup)
+        self.assertIn("Disadvantage", setup)
+        self.assertIn("Use at least 8 characters for the operator password.", setup_password_script)
+        self.assertIn("The passwords do not match.", setup_password_script)
+        self.assertIn("easyOfflineInfoDialog.showModal()", setup_password_script)
         self.assertIn('name="csrf_token"', account)
         self.assertIn("Captions and connected viewers are not affected.", main)
+        self.assertIn('"desktop_password_reset": system in {"Darwin", "Windows"}', main)
+        self.assertIn("if desktop_password_reset", login)
+        self.assertIn("Church Cap desktop manager", login)
+        self.assertIn("elif linux_password_reset", login)
+        self.assertIn("./reset-operator-password.sh", login)
+        self.assertNotIn("reset-operator-password.cmd", login)
 
     def test_public_payloads_and_headers_do_not_expose_operator_details(self):
         from fastapi.responses import Response

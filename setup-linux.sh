@@ -11,6 +11,8 @@ fi
 
 # shellcheck source=scripts/linux-system-packages.sh
 source "$APP_DIR/scripts/linux-system-packages.sh"
+# shellcheck source=scripts/linux-python-runtime.sh
+source "$APP_DIR/scripts/linux-python-runtime.sh"
 
 repair_script_permissions() {
   chmod +x ./*.sh scripts/*.sh scripts/*.py 2>/dev/null || true
@@ -56,8 +58,10 @@ This installer supports the common package-manager families:
   pacman (Arch Linux and derivatives)
   apk (Alpine Linux)
 
-It installs only the system packages needed for Python, PortAudio and builds.
-Church Cap's Python packages stay inside this folder's .venv.
+It installs only the system packages needed for audio and Python packages.
+Church Cap's Python packages stay inside this folder's .venv. If the Linux
+distribution only provides Python 3.14 or newer, setup downloads a SHA-256
+verified Python 3.12 runtime and keeps it inside this folder's .tools directory.
 It does not enable extra repositories or install NVIDIA drivers. If an NVIDIA
 driver is already working, setup can optionally add the CUDA 12 cuBLAS and
 cuDNN 9 runtime libraries required by CTranslate2 inside the local .venv.
@@ -68,7 +72,7 @@ INTRO
 
 if [[ -z "$PACKAGE_MANAGER" ]]; then
   echo "No supported package manager was found." >&2
-  echo "Install Python 3.10+, venv, pip, compiler/build tools, PortAudio development headers, libsndfile, curl, and unzip; then rerun setup." >&2
+  echo "Install compiler/build tools, PortAudio development headers, libsndfile, curl, tar, and CA certificates; then rerun setup." >&2
   exit 1
 fi
 
@@ -81,12 +85,38 @@ esac
 step "1/7 Installing required system packages"
 install_linux_system_packages "$PACKAGE_MANAGER"
 
-step "2/7 Finding Python 3.10 or newer"
+step "2/7 Preparing a compatible Python (3.10 through 3.13)"
+INSTALL_TMP="$APP_DIR/.install-tmp"
+mkdir -p "$INSTALL_TMP"
+cleanup_install_tmp() {
+  rm -rf -- "$INSTALL_TMP"
+}
+trap cleanup_install_tmp EXIT
+VENV_INCOMPLETE_MARKER="$APP_DIR/.venv/.church-cap-install-incomplete"
+if [[ -d ".venv" ]] && {
+  [[ ! -x ".venv/bin/python" ]] ||
+  ! python_is_supported ".venv/bin/python" ||
+  [[ -f "$VENV_INCOMPLETE_MARKER" ]]
+}; then
+  echo "The existing Church Cap .venv is incomplete or uses an unsupported Python." >&2
+  [[ ! -x ".venv/bin/python" ]] || echo "Existing environment: $(.venv/bin/python --version 2>&1)" >&2
+  echo "It may be consuming the disk quota needed by a clean installation." >&2
+  read -r -p "Remove only this Church Cap .venv and recreate it? [y/N] " replace_venv
+  case "${replace_venv:-no}" in
+    y|Y|yes|YES) rm -rf -- "$APP_DIR/.venv" ;;
+    *) echo "Setup stopped without changing the existing .venv."; exit 1 ;;
+  esac
+fi
+require_linux_install_space "$APP_DIR" $((8 * 1024 * 1024))
 PYTHON_BIN="$(find_supported_linux_python || true)"
 if [[ -z "$PYTHON_BIN" ]]; then
-  echo "A supported Python was not found after package installation." >&2
-  echo "AlmaLinux/RHEL-family users should enable the normal AppStream repositories and install Python 3.11 or newer." >&2
-  exit 1
+  echo "The system Python is not compatible with Church Cap v0.8.0's pinned ML packages." >&2
+  echo "Preparing a verified, project-local Python 3.12 without changing the system Python..." >&2
+  if ! PYTHON_BIN="$(install_managed_linux_python "$APP_DIR" "$INSTALL_TMP")"; then
+    echo "Church Cap could not prepare its project-local Python 3.12 runtime." >&2
+    echo "Check the internet connection and available storage, then rerun bash setup-linux.sh." >&2
+    exit 1
+  fi
 fi
 echo "Using $("$PYTHON_BIN" --version) at $PYTHON_BIN"
 
@@ -103,9 +133,21 @@ if [[ ! -x "$VENV_PY" ]]; then
 fi
 
 step "4/7 Installing Church Cap inside .venv"
+export TMPDIR="$INSTALL_TMP"
+export PIP_NO_CACHE_DIR=1
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+touch "$VENV_INCOMPLETE_MARKER"
 "$VENV_PY" -m ensurepip --upgrade >/dev/null 2>&1 || true
-"$VENV_PY" -m pip install --upgrade "pip==26.1.2" "setuptools<82" wheel
-"$VENV_PY" -m pip install -r requirements.txt
+if ! "$VENV_PY" -m pip install --no-cache-dir --upgrade "pip==26.1.2" "setuptools<82" wheel ||
+   ! "$VENV_PY" -m pip install --no-cache-dir -r requirements.txt; then
+  echo "" >&2
+  echo "Church Cap's Python dependencies could not be installed." >&2
+  linux_storage_diagnostics "$APP_DIR" >&2
+  echo "If the error says 'Disk quota exceeded', free space from this user account or ask the administrator to raise its quota." >&2
+  echo "A failed attempt may have left a partial .venv; rerun setup and approve removing only that Church Cap .venv." >&2
+  exit 1
+fi
+rm -f -- "$VENV_INCOMPLETE_MARKER"
 mkdir -p data logs certs
 create_env_if_missing
 

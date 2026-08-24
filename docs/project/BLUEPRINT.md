@@ -6,13 +6,13 @@ This document describes the current alpha architecture.
 
 ## Current Release
 
-Version: `v0.7.6`
+Version: `v0.8.0` development
 
 Status: controlled local church testing. Church Cap is open-source software, not a compliance-certified service, and churches remain responsible for their own privacy, safeguarding, accessibility, copyright, and operational policies.
 
 ## Deployment Model
 
-Church Cap v0.7.6 builds on the v0.7.5 translated-audio baseline and implements the deterministic Service Context hybrid. Notes produce operator-reviewed suggestions and explicit corrections are compiled before captions begin. Safe mode does not add note-derived terms to Whisper. A separate experimental option can supply no more than two selected terms within an eight-additional-token budget. Full Bible references are formatted after recognition on every English caption run, including runs without notes, rather than occupying Whisper's prompt. Optional local translated-caption audio through Sherpa-ONNX remains available: a translated-language viewer can select **Listen** when that language has an installed, licence-approved voice pack; otherwise the same control clearly reports that audio is unavailable. Church Cap speaks only completed translations, generates each cue once per language, and keeps synthesis on a separate bounded worker so caption publication never waits for TTS. Service Context is available for development testing while its corpus and multi-platform acceptance gates remain open.
+Church Cap v0.8.0 starts from the v0.7.6 product baseline and adds a modular signed-desktop distribution layer. The existing FastAPI application and browser UI remain shared. A stable dual-port engine entry point, typed source/packaged platform contracts, immutable resource boundary, and future thin native supervisor provide lifecycle, recovery, update, and installer integration without forking the caption product. The deterministic Service Context and optional translated-audio behaviour retained from v0.7.6 remain subject to their existing acceptance boundaries.
 
 Translated audio is an optional accessibility layer, not a replacement for captions. Operators choose, install, check and enable it from **Languages → Spoken translated audio**. Normal setup downloads no voice weights; the GUI shows per-pack and selected-total size estimates before an authenticated operator starts installation while captions are stopped. It remains disabled when no reviewed voice pack is installed, never appears for English, is suppressed during Sensitive moment mode, and does not store generated audio or translated wording. Audience playback uses one explicitly activated HTML media element so mobile browsers can retain playback permission and expose native media controls where supported. Invalid or silent generated samples are not delivered. See [Local translated audio](../translated-audio.md) and [Optional Spoken-Language Model Notices](../legal/SPOKEN_LANGUAGE_MODELS.md).
 
@@ -26,7 +26,7 @@ This keeps one codebase while allowing the appliance shell, kiosk setup, and upd
 
 Roadmap detail: [ROADMAP_TO_V1.md](ROADMAP_TO_V1.md).
 
-v0.7.6 implementation status: [V0.7.6_IMPLEMENTATION.md](V0.7.6_IMPLEMENTATION.md). Proposed Service Context design: [V0.7.6_SERVICE_CONTEXT_PLAN.md](V0.7.6_SERVICE_CONTEXT_PLAN.md).
+v0.8.0 implementation status: [V0.8.0_IMPLEMENTATION.md](V0.8.0_IMPLEMENTATION.md). Cross-platform boundaries: [CROSS_PLATFORM_ARCHITECTURE.md](CROSS_PLATFORM_ARCHITECTURE.md). Release procedure: [DESKTOP_UPDATE_RELEASE_RUNBOOK.md](DESKTOP_UPDATE_RELEASE_RUNBOOK.md). Retained v0.7.6 baseline: [V0.7.6_IMPLEMENTATION.md](V0.7.6_IMPLEMENTATION.md).
 
 v0.7.6 retains the Room Display/OBS presentation policy, focused security and translation-installation hardening from v0.7.4, and the optional translated-audio layer introduced in v0.7.5. Audience-phone caption timing, translation scheduling and appliance identity remain unchanged. Service metrics advance through schema 12 for privacy-safe audio-callback recovery counts and schema 13 for text-free Service Context mode, hint, prompt-token, reference and correction counts. TTS readiness and text-free queue/latency state remain available only through authenticated diagnostics.
 

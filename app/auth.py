@@ -188,6 +188,30 @@ def request_has_same_origin(request: Request) -> bool:
     return origin.rstrip("/") in expected_origins
 
 
+def operator_mutation_origin_is_valid(request: Request) -> bool:
+    """Validate origin evidence after the session-bound CSRF token has passed.
+
+    Remote Safari form submissions can omit or rewrite origin evidence when
+    Church Cap is reached through a LAN hostname or address. Easy Offline mode
+    deliberately exposes operator controls on that LAN, so its valid,
+    session-bound CSRF token may be used as the fallback proof. Explicitly
+    cross-site requests remain rejected, and the fallback is unavailable while
+    the operator localhost lock is enabled.
+    """
+    if request_has_same_origin(request):
+        return True
+    if request.headers.get("sec-fetch-site", "").strip().lower() == "cross-site":
+        return False
+
+    from app.runtime_config import load_runtime_config
+
+    runtime = load_runtime_config()
+    return (
+        runtime.get("security_mode") == "easy_offline"
+        and not bool(runtime.get("lock_operator_to_localhost", True))
+    )
+
+
 def throttle_key(request: Request, flow: str) -> str:
     client_host = request.client.host if request.client else "unknown"
     return f"{flow}:{client_host}"
@@ -206,7 +230,7 @@ def require_operator_mutation(request: Request, submitted_token: str | None = No
     token = submitted_token if submitted_token is not None else request.headers.get("x-csrf-token")
     if not verify_operator_csrf_token(session_token, token, config):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid operator request token")
-    if not request_has_same_origin(request):
+    if not operator_mutation_origin_is_valid(request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Request origin did not match Church Cap")
 
 

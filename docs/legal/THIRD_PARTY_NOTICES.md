@@ -35,7 +35,7 @@ These are the direct dependencies pinned in `requirements.txt`, `requirements-tr
 
 Church Cap setup and optional model installers currently use `pip==26.1.2`, `setuptools<82`, and the platform-resolved `wheel` package. GitHub security checks use `bandit==1.9.4` and `pip-audit==2.10.1`. These are installation and verification tools rather than Church Cap application-runtime imports, but packaged distributions should record the exact resolved versions they use.
 
-Optional Linux GPU-runtime installation requests CUDA 12 `nvidia-cublas-cu12` and cuDNN 9 (`nvidia-cudnn-cu12==9.*`). The Windows repair helper requests `nvidia-cuda-runtime-cu12`, `nvidia-cublas-cu12`, and `nvidia-cudnn-cu12<9` for the supported CTranslate2 Windows path. These wheels are not installed by default.
+Optional Linux GPU-runtime installation requests CUDA 12 `nvidia-cublas-cu12` and cuDNN 9 (`nvidia-cudnn-cu12==9.*`). The Windows source and packaged repair paths request exact compatible releases: `nvidia-cuda-runtime-cu12==12.4.127`, `nvidia-cublas-cu12==12.4.5.8`, and `nvidia-cudnn-cu12==9.1.0.70`. The packaged installer verifies the expected Windows wheel filenames and their published SHA-256 hashes before extracting the runtime DLLs and licence/notice material to per-user Church Cap application data. These wheels are not installed by default.
 
 ## Important Transitive Dependencies
 
@@ -56,7 +56,7 @@ The exact transitive dependency set is resolved by `pip` for the user's platform
 | PyAV | faster-whisper | Audio decoding dependency. |
 | tqdm | faster-whisper | Progress display dependency. |
 | sentencepiece, stanza, sacremoses, packaging | Argos Translate | Optional translation dependencies. |
-| NVIDIA CUDA Python wheel packages | Optional Windows/Linux GPU acceleration | Optional local `.venv` packages. Windows setup may use `nvidia-cuda-runtime-cu12`, `nvidia-cublas-cu12`, and `nvidia-cudnn-cu12`; Linux setup may use CUDA 12 `nvidia-cublas-cu12` and cuDNN 9 `nvidia-cudnn-cu12`. They are installed only when the operator chooses GPU runtime setup. |
+| NVIDIA CUDA Python wheel packages | Optional Windows/Linux GPU acceleration | Source setup may install packages into a local `.venv`. The packaged Windows repair path instead verifies and extracts only required DLL/licence files to per-user Church Cap application data. Windows uses the exact CUDA 12.4 runtime/cuBLAS and cuDNN 9 versions listed above; Linux may use CUDA 12 `nvidia-cublas-cu12` and cuDNN 9 `nvidia-cudnn-cu12`. They are installed only when the operator explicitly chooses GPU runtime setup. |
 | PortAudio | sounddevice | System audio library installed through Homebrew on macOS or the detected Linux package manager. |
 
 If you distribute a packaged app, wheels, a frozen environment, or a Docker image, generate a full software bill of materials from that exact artifact and include all transitive package versions and licences.

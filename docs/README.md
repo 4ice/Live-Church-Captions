@@ -9,6 +9,7 @@ This folder keeps reference material out of the project root.
 ## Setup And Architecture
 
 - `architecture.md`
+- `project/CROSS_PLATFORM_ARCHITECTURE.md`
 - `security_privacy_networking.md`
 - `android_networking.md`
 - `internal_https.md`
@@ -30,8 +31,11 @@ This folder keeps reference material out of the project root.
 
 - `project/BLUEPRINT.md`
 - `project/ROADMAP_TO_V1.md`
+- `project/CROSS_PLATFORM_ARCHITECTURE.md`
+- `project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md`
+- `project/V0.8.0_IMPLEMENTATION.md`
+- `project/V0.8.0_DEPENDENCY_AUDIT.md`
 - `project/V0.7.6_IMPLEMENTATION.md`
 - `project/V0.7.6_RELEASE_NOTES.md`
 - `project/V0.7.6_ACCEPTANCE_TEST_FRAMEWORK.md`
-- `project/Church_Cap_v0.7.6_Action_Plan_ARCHIVED_2026-08-06.docx` (historical planning snapshot; not the current implementation status)
 - `project/TRANSLATION_MODEL_RESEARCH.md`

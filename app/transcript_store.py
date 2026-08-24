@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
@@ -174,7 +175,18 @@ class TranscriptStore:
                 tmp.chmod(0o600)
             except Exception:
                 pass
-            os.replace(tmp, path)
+            # Windows can briefly deny a replacement when simultaneous cache
+            # writers close and rename their private temporary files. Retry
+            # only that transient sharing/permission failure; other errors
+            # continue to fail closed immediately.
+            for attempt in range(20):
+                try:
+                    os.replace(tmp, path)
+                    break
+                except PermissionError:
+                    if attempt == 19:
+                        raise
+                    time.sleep(0.01)
         except Exception:
             if tmp_name:
                 try:

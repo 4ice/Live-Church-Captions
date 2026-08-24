@@ -10,12 +10,15 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from app.paths import model_data_dir
+
 # Church Cap sends short, bounded cues to Argos and does not need its Stanza
 # sentence-boundary pipeline. Keep that pipeline disabled before Argos is lazily
 # imported: this avoids service-time model loading/network attempts and prevents
 # packaged Stanza model files from entering the translation path.
 os.environ["ARGOS_STANZA_AVAILABLE"] = "0"
 os.environ["ARGOS_CHUNK_TYPE"] = "MINISBD"
+os.environ.setdefault("ARGOS_PACKAGES_DIR", str(model_data_dir() / "argos-packages"))
 
 
 class _BoundedCueSentencizer:
@@ -38,17 +41,16 @@ def _use_bounded_argos_cue(translation: Any) -> None:
             return
 
 SOURCE_LANGUAGE = "en"
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CT2_SMALL100_PROVIDER = "ct2small100"
 CT2_SMALL100_MODEL_NAME = "alirezamsh/small100"
 CT2_SMALL100_MODEL_REVISION = "8ab680e26a596d2e3d2d2d17ae0f68df1037328c"
 CT2_SMALL100_TOKENIZER_SHA256 = "73c8d2405e9c588582434c9f91327127faf133b9f915b203ed07ba4cd0ca9c92"
-CT2_SMALL100_MODEL_DIR = Path(os.environ.get("CHURCHCAP_CT2_SMALL100_DIR") or PROJECT_ROOT / "data" / "models" / "small100-ct2-int8")
+CT2_SMALL100_MODEL_DIR = Path(os.environ.get("CHURCHCAP_CT2_SMALL100_DIR") or model_data_dir() / "small100-ct2-int8")
 OPUS_TIGRINYA_PROVIDER = "opus_tigrinya"
 OPUS_TIGRINYA_MODEL_NAME = "Helsinki-NLP/opus-mt-en-ti"
 OPUS_TIGRINYA_MODEL_REVISION = "72f1e40b4b60ff4863407f90792b4fac517562ec"
-OPUS_TIGRINYA_MODEL_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_DIR") or PROJECT_ROOT / "data" / "models" / "opus-mt-en-ti-ct2-int8")
-OPUS_TIGRINYA_TOKENIZER_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_TOKENIZER_DIR") or PROJECT_ROOT / "data" / "models" / "opus-mt-en-ti-tokenizer")
+OPUS_TIGRINYA_MODEL_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_DIR") or model_data_dir() / "opus-mt-en-ti-ct2-int8")
+OPUS_TIGRINYA_TOKENIZER_DIR = Path(os.environ.get("CHURCHCAP_OPUS_TIGRINYA_TOKENIZER_DIR") or model_data_dir() / "opus-mt-en-ti-tokenizer")
 CHINESE_SIMPLIFIED = "zh-hans"
 CHINESE_TRADITIONAL = "zh-hant"
 CHINESE_VARIANTS = {
