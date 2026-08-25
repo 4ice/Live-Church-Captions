@@ -4,38 +4,38 @@ This folder keeps reference material out of the project root.
 
 ## User Guides
 
-- `user/quick-start.md`
+- [Quick start](user/quick-start.md)
+- [Linux installation and operation](linux.md)
+- [Android and local-network troubleshooting](android_networking.md)
+- [Service Leader controls](service_leader_controls.md)
 
-## Setup And Architecture
+## Features And Operations
 
-- `architecture.md`
-- `project/CROSS_PLATFORM_ARCHITECTURE.md`
-- `security_privacy_networking.md`
-- `android_networking.md`
-- `internal_https.md`
-- `translation.md`
-- `translated-audio.md`
-- `recorded-sermon-testing.md`
-- `linux.md`
-- `service_leader_controls.md`
+- [Security, privacy, and networking](security_privacy_networking.md)
+- [Local HTTPS](internal_https.md)
+- [Translation](translation.md)
+- [Translated audio](translated-audio.md)
+- [Recorded-sermon testing](recorded-sermon-testing.md)
 
 ## Legal And Notices
 
-- `legal/PRIVACY.md`
-- `legal/DISCLAIMER.md`
-- `legal/NOTICE_TEMPLATE_FOR_CHURCHES.md`
-- `legal/THIRD_PARTY_NOTICES.md`
-- `legal/SPOKEN_LANGUAGE_MODELS.md`
+- [Privacy](legal/PRIVACY.md)
+- [Disclaimer](legal/DISCLAIMER.md)
+- [Suggested church notice](legal/NOTICE_TEMPLATE_FOR_CHURCHES.md)
+- [Third-party notices](legal/THIRD_PARTY_NOTICES.md)
+- [Spoken-language model notices](legal/SPOKEN_LANGUAGE_MODELS.md)
 
-## Project Planning
+## Architecture And Maintainer References
 
-- `project/BLUEPRINT.md`
-- `project/ROADMAP_TO_V1.md`
-- `project/CROSS_PLATFORM_ARCHITECTURE.md`
-- `project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md`
-- `project/V0.8.0_IMPLEMENTATION.md`
-- `project/V0.8.0_DEPENDENCY_AUDIT.md`
-- `project/V0.7.6_IMPLEMENTATION.md`
-- `project/V0.7.6_RELEASE_NOTES.md`
-- `project/V0.7.6_ACCEPTANCE_TEST_FRAMEWORK.md`
-- `project/TRANSLATION_MODEL_RESEARCH.md`
+- [Application architecture](architecture.md)
+- [Product blueprint](project/BLUEPRINT.md)
+- [Roadmap to v1.0.0](project/ROADMAP_TO_V1.md)
+- [Cross-platform architecture](project/CROSS_PLATFORM_ARCHITECTURE.md)
+- [Desktop update release runbook](project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md)
+- [Translation model research](project/TRANSLATION_MODEL_RESEARCH.md)
+
+## v0.8.0 Release Records
+
+- [Release notes](project/V0.8.0_RELEASE_NOTES.md)
+- [Implementation record](project/V0.8.0_IMPLEMENTATION.md)
+- [Dependency audit](project/V0.8.0_DEPENDENCY_AUDIT.md)

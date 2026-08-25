@@ -207,13 +207,13 @@ See [TRANSLATION_MODEL_RESEARCH.md](project/TRANSLATION_MODEL_RESEARCH.md) for t
 
 The operator page **Performance** controls can switch between standard local OpenAI Whisper and the lower-latency `faster-whisper` backend without editing `.env`. The platform view auto-detects macOS, Windows, or Linux and can be changed manually if needed. Windows and Linux can use NVIDIA CUDA for Faster Whisper when CTranslate2 sees a working runtime; Windows includes an optional local runtime installer, while Linux leaves drivers and CUDA under the system administrator's package policy. On macOS, CUDA choices are hidden and OpenAI Whisper can attempt Apple Metal/MPS when PyTorch supports it. Argos Translate may still run on CPU even when Whisper uses GPU acceleration. Recommended package / CTranslate2 INT8 translation remains optional and should be validated with real speech before live use.
 
-## Measuring Translation In v0.7.6
+## Measuring Translation
 
 Church Cap records privacy-safe numeric measurements for every translated language requested by a connected viewer. The current service and latest five completed summaries distinguish queue wait, provider compute, source-to-publish timing, outcomes, source-unit boundaries, draft coalescing/backpressure, durable finals, maximum queue depth, recovery, viewer-seconds, and resource pressure. Viewer counts are seeded when captions start so phones that joined beforehand are included. The implementation is not limited to Farsi or Chinese; those are the first languages being assessed with native readers.
 
 The separate anonymised service report contains only allow-listed numeric measurements and non-identifying run/configuration fields. It excludes source speech, captions, translated wording, audio and device metadata, glossary content, paths, network identifiers, operator data, and logs. The broader diagnostics file also excludes caption content but remains support-sensitive because it includes computer information and redacted logs. Follow [recorded-sermon-testing.md](recorded-sermon-testing.md) to compare repeated runs with the same recording and audience-language viewers.
 
-## Optional translated audio retained in v0.7.6
+## Optional Translated Audio
 
 Translated audio is a consumer of the existing translated-caption stream, not a second translation provider. Only an applied final translated cue is offered to the TTS manager. Drafts and later corrections are never both spoken, so a listener does not hear several versions of the same sentence. A finalized cue is generated once per language and shared among that language's opted-in listeners.
 

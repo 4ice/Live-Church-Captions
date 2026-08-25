@@ -28,7 +28,7 @@ Use **Benchmark** before selecting heavier models such as `small.en` or `medium.
 
 ## First-Time Setup On Mac
 
-1. Open the [Mac — Apple Silicon release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0) and download `Church-Cap-v0.8.0-macOS-Apple-Silicon.dmg`.
+1. Open the [Church Cap v0.8.0 release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0) and download `Church-Cap-v0.8.0-macOS-Apple-Silicon.dmg`.
 2. Open the DMG and drag **Church Cap** to **Applications**.
 3. Open Church Cap from Applications and allow microphone access when macOS asks.
 4. Church Cap opens the existing browser setup page. Create the operator password there.
@@ -37,7 +37,7 @@ The Mac release is Developer-ID signed, notarized, and stapled. It does not requ
 
 ## First-Time Setup On Windows
 
-1. Open the [Windows — 64-bit release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0) and download the Church Cap setup executable.
+1. Open the [Church Cap v0.8.0 release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0) and download the Church Cap Windows x64 setup executable.
 2. Run setup. Windows may show a SmartScreen warning because the v0.8.0 Windows build is currently unsigned; check that the file hash matches the SHA-256 value published with the release before continuing.
 3. Leave optional NVIDIA CUDA unchecked unless this computer has a supported NVIDIA GPU. If selected, setup downloads verified per-user CUDA 12.4/cuDNN 9 runtime files. An interrupted download safely retries after first launch and can also be repaired later from **Operator → Performance**.
 4. Open Church Cap from the Start menu. No Command Prompt window is required.
@@ -48,7 +48,7 @@ If optional CUDA does not become ready, keep Church Cap open and review **Operat
 
 ## First-Time Setup On Linux
 
-1. Open the [Linux — 64-bit CLI release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0) and download both `Church-Cap-Linux-CLI.tar.gz` and `Church-Cap-Linux-CLI.tar.gz.sha256`.
+1. Open the [Church Cap v0.8.0 release](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0) and download both `Church-Cap-Linux-CLI.tar.gz` and `Church-Cap-Linux-CLI.tar.gz.sha256`.
 2. In a terminal, verify and extract the curated archive:
 
 ```bash
@@ -210,7 +210,7 @@ Translation is experimental and may be inaccurate. Start with the default active
 
 ### Optional Translated Audio
 
-v0.7.6 retains the optional translated-caption audio introduced in v0.7.5. It can speak finalized translated captions to a visitor who selects **Listen**, without translating the text again. Stop captions, then use **Operator → Languages → Spoken Translated Audio** to choose the required packs, review their estimated size, and select **Install selected languages**. Installation, readiness and the visitor on/off control are kept together on that card. Normal setup and the source repository contain no voice weights. English never offers translated audio; Traditional Chinese currently uses Mandarin speech, not Cantonese.
+Church Cap can speak finalized translated captions to a visitor who selects **Listen**, without translating the text again. Stop captions, then use **Operator → Languages → Spoken Translated Audio** to choose the required packs, review their estimated size, and select **Install selected languages**. Installation, readiness and the visitor on/off control are kept together on that card. Normal setup and the source repository contain no voice weights. English never offers translated audio; Traditional Chinese currently uses Mandarin speech, not Cantonese.
 
 Run the optional installer only after normal setup, then follow the manifest, licence and live-test guidance in [Local Translated Audio](../translated-audio.md) and [Optional Spoken-Language Model Notices](../legal/SPOKEN_LANGUAGE_MODELS.md). Keep the feature off for a live service until a native listener has checked the exact voice and the target computer has passed the caption-latency, sensitive-mode, headphone and backlog tests.
 
@@ -278,7 +278,7 @@ Wait a few seconds after running `./start-macos.sh`.
 
 Use the direct-IP QR code on the operator page. On Linux, rerun `bash setup-linux.sh` and accept the recommended audience firewall rule if it was previously skipped. Also check that the phone is on the same network and that guest Wi-Fi/client isolation allows it to reach the caption computer. A working host firewall rule cannot override isolation enforced by the router or wireless access point.
 
-If Safari reports that the server stopped responding after the page has been open or translated audio has been used, first reopen the current QR link. v0.7.6 refreshes stale viewer assets and recreates caption/audio connections when Safari restores a suspended page. If Safari alone still fails while another phone can reach Church Cap, try the direct-IP QR; success there points to cached local-hostname/mDNS resolution rather than the Church Cap server.
+If Safari reports that the server stopped responding after the page has been open or translated audio has been used, first reopen the current QR link. Church Cap refreshes stale viewer assets and recreates caption/audio connections when Safari restores a suspended page. If Safari alone still fails while another phone can reach Church Cap, try the direct-IP QR; success there points to cached local-hostname/mDNS resolution rather than the Church Cap server.
 
 ### No audio devices appear
 
@@ -307,7 +307,7 @@ AI-generated captions can contain mistakes. Use the sensitive blank/pause mode f
 
 ## Feedback
 
-The operator page includes **Open feedback page** under **Diagnostics → Support**. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics → Support → Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. v0.7.6 retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
+The operator page includes **Open feedback page** under **Diagnostics → Support**. Use it for feature ideas, issues, setup confusion, accessibility feedback, and caption or translation notes. Please include the Church Cap version number and any useful computer, operating system, audio interface, or error details. For recorded-sermon comparisons, use **Diagnostics → Support → Download anonymised service report**; this allow-listed file contains no speech, captions, rejected wording, translations, audio metadata, recognition timestamps, glossary content, paths, network identifiers, operator data, or logs. Church Cap retains the latest five completed summaries across restarts and reports timestamped cue-engine processing latency, cue/queue health, and text-free end-of-speech guard counts. Select **Reset test measurements** before a new comparison set.
 
 Open **Diagnostics → Application Storage** to see the application, Church Cap data, Hugging Face model downloads, OpenAI Whisper downloads, optional spoken-audio models, and current log use. Storage is calculated only when this page is opened or refreshed. **Review unused downloads** opens a Church Cap-themed confirmation menu; nothing is removed automatically. The active model, settings, transcripts, measurements, and current logs are protected. An inactive model offered for cleanup must download again if you select it later. Church Cap limits each of its diagnostic logs to 5 MB plus two archived copies.
 

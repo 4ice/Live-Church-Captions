@@ -91,11 +91,13 @@ class LinuxScriptTests(unittest.TestCase):
         self.assertIn("It does not open operator port 9090", self.setup)
         self.assertNotIn('add-port="9090/tcp"', self.packages)
 
-    def test_linux_updater_selects_curated_versioned_release_asset(self):
-        self.assertIn('CHURCH_CAP_UPDATE_TAG_PREFIX="linux-"', self.update)
+    def test_linux_updater_selects_curated_unified_release_asset(self):
+        self.assertIn('CHURCH_CAP_UPDATE_TAG_PREFIX=""', self.update)
         self.assertIn('CHURCH_CAP_UPDATE_ASSET_NAME="Church-Cap-Linux-CLI.tar.gz"', self.update)
         self.assertIn('CHURCH_CAP_UPDATE_PLATFORM="linux"', self.update)
         self.assertIn('scripts/update-unix.sh', self.update)
+        self.assertIn('LATEST_RELEASE_URL="https://api.github.com/repos/Church-Cap/Live-Church-Captions/releases/latest"', self.shared_update)
+        self.assertIn('REMOTE_TAG="${RELEASE_TAG_PREFIX}v$REMOTE_VERSION"', self.shared_update)
         self.assertIn("Verifying the published Linux archive checksum", self.shared_update)
         self.assertIn('tar -tzf "$ARCHIVE_PATH"', self.shared_update)
         self.assertIn('EXTRACTED_DIR="$TMP_DIR/Church-Cap-Linux-CLI"', self.shared_update)

@@ -38,10 +38,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-"$PROJECT_ROOT/scripts/release/generate-macos-dmg-background.swift" \
+/usr/bin/xcrun swift "$PROJECT_ROOT/scripts/release/generate-macos-dmg-background.swift" \
   "$PROJECT_ROOT/assets/branding/church-cap-wide-light.png" \
   "$BACKGROUND_PATH" 1
-"$PROJECT_ROOT/scripts/release/generate-macos-dmg-background.swift" \
+/usr/bin/xcrun swift "$PROJECT_ROOT/scripts/release/generate-macos-dmg-background.swift" \
   "$PROJECT_ROOT/assets/branding/church-cap-wide-light.png" \
   "$BACKGROUND_2X_PATH" 2
 tiffutil -cathidpicheck "$BACKGROUND_PATH" "$BACKGROUND_2X_PATH" -out "$BACKGROUND_TIFF_PATH"

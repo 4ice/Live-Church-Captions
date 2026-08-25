@@ -12,40 +12,35 @@ For a non-technical setup guide, start with [START_HERE.md](START_HERE.md).
 
 ## Download Church Cap
 
-- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0): download the notarized DMG, drag Church Cap to Applications, then open it.
-- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0): download and run the setup executable. The v0.8.0 Windows build is currently unsigned, so Windows may show a SmartScreen warning.
-- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0): download `Church-Cap-Linux-CLI.tar.gz`, verify its published SHA-256 file, extract it, and run `bash setup-linux.sh`.
+- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): download the notarized DMG, drag Church Cap to Applications, then open it.
+- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): download and run the setup executable. The v0.8.0 Windows build is currently unsigned, so Windows may show a SmartScreen warning.
+- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): download `Church-Cap-Linux-CLI.tar.gz`, verify its published SHA-256 file, extract it, and run `bash setup-linux.sh`.
 
-The release downloads all use the single shared browser application in `app/`. Source checkout instructions remain below for contributors and advanced installations.
+All platform downloads are published together under one semantic-version GitHub Release and use the single shared browser application in `app/`. Source checkout instructions remain below for contributors and advanced installations.
 
 ## Project Layout
 
-- `START_HERE.md` — simplest setup guide for non-technical users.
-- `setup-macos.sh`, `start-macos.sh`, `reset-operator-password.sh` — main Mac operator scripts.
-- `setup-windows.cmd`, `start-windows.cmd`, `reset-operator-password.cmd` — easiest Windows operator launchers.
-- `setup-linux.sh`, `start-linux.sh`, `update-linux.sh` — Linux setup, normal start, and updater scripts with package-manager detection.
-- `install-cuda-runtime-linux.sh` — optional Linux NVIDIA CUDA 12 cuBLAS/cuDNN runtime helper.
-- `install-cuda-runtime-windows.cmd` — optional Windows NVIDIA CUDA runtime force reinstall helper.
-- `update-macos.sh`, `update-windows.cmd` — replace the current folder with the latest GitHub release tag after checking the remote version.
-- `setup-windows.ps1`, `start-windows.ps1`, `reset-operator-password.ps1` — Windows PowerShell scripts used by the launchers.
-- `app/` — Church Cap web app.
-- `config/` — church-owned glossary overrides and profanity-filter additions.
-- `app/resources/christian_prompt_terms.txt` and `app/resources/christian_corrections.csv` — versioned Christian recognition hints and conservative built-in caption corrections. The bounded prompt balances theology, biblical names, books/places and Christian phrases by category and priority. Built-ins update with Church Cap; local glossary overrides remain preserved.
-- `docs/` — user guides, legal notes, architecture, networking, and translation docs.
-- `docs/project/ROADMAP_TO_V1.md` — staged route from the v0.6 preview architecture to v1.0.0.
-- `docs/project/CROSS_PLATFORM_ARCHITECTURE.md` — shared-core and platform-wrapper boundaries for Mac, Windows, and Linux.
-- `docs/project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md` — maintainer procedure for signed desktop update channels and platform releases.
-- `docs/project/V0.8.0_IMPLEMENTATION.md` — current v0.8.0 implementation status and remaining work.
-- `docs/project/V0.8.0_DEPENDENCY_AUDIT.md` — reviewed upstream dependency findings and narrowly documented exceptions.
-- `docs/project/V0.7.6_IMPLEMENTATION.md` — retained v0.7.6 baseline and Service Context workstreams.
-- `docs/project/V0.7.6_SERVICE_CONTEXT_PLAN.md` — proposed per-service sermon-note context, glossary improvement, privacy, performance, testing, and rollout plan.
-- `docs/project/V0.7.6_RELEASE_NOTES.md` — draft release notes and current branch status for v0.7.6.
-- `docs/translated-audio.md` — optional local translated-audio setup, voice-pack review, and testing guide.
-- `docs/legal/SPOKEN_LANGUAGE_MODELS.md` — per-language voice source, size, licence and attribution/share-alike notices.
-- `docs/project/TRANSLATION_MODEL_RESEARCH.md` — commercial/open-source model and licence audit for contextual and Chinese translation.
-- `.github/` — GitHub-standard contribution, security, code of conduct, issue, pull request, and CI files.
-- `docker/` — optional Docker development files.
-- `scripts/` — helper scripts used by setup, development, diagnostics, and maintenance.
+Most users should install Church Cap from the [latest GitHub release](https://github.com/Church-Cap/Live-Church-Captions/releases). The files below are primarily for contributors and source-based installations.
+
+- `app/` — shared Church Cap web application used across macOS, Windows, and Linux.
+- `engine/` — packaged web-server entry point and lifecycle protocol.
+- `desktop/` — native macOS and Windows supervisor, system tray integration, and updater.
+- `config/` — local glossary overrides and caption-filter additions.
+- `scripts/` — setup, build, release, diagnostic, and maintenance tools.
+- `packaging/` — platform-specific installer, signing, and packaging configuration.
+- `docs/` — user guides, architecture, legal information, translation documentation, and maintained project references.
+- `docker/` — optional Docker development environment.
+- `.github/` — contribution templates, security information, and automated checks.
+
+### Source Setup Scripts
+
+- `setup-macos.sh`, `start-macos.sh` — macOS source setup and startup.
+- `setup-windows.cmd`, `start-windows.cmd` — Windows source setup and startup.
+- `setup-linux.sh`, `start-linux.sh`, `update-linux.sh` — Linux CLI setup, startup, and updates.
+- `reset-operator-password.*` — operator password and security-mode recovery tools.
+- `install-cuda-runtime-*` — optional NVIDIA CUDA runtime installation helpers.
+
+For source installation, see [START_HERE.md](START_HERE.md). Maintainers should also read the [cross-platform architecture](docs/project/CROSS_PLATFORM_ARCHITECTURE.md) and [desktop update release runbook](docs/project/DESKTOP_UPDATE_RELEASE_RUNBOOK.md).
 
 ## What It Includes
 
@@ -70,7 +65,7 @@ The release downloads all use the single shared browser application in `app/`. S
 - On Church Cap appliances, local Display and OBS previews stay on the appliance shell origin so the persistent Home/System controls remain available and failed preview routes can return to the local recovery environment.
 - Local multilingual support: phone UI labels use the lightweight catalogue in `app/locales/client_ui.json`, with Argos runtime fallback where needed. Experimental translated captions use package-style choices: **Recommended package** CTranslate2 INT8 / SMaLL-100, **Base package** Argos Translate, **Compatibility package** PyTorch SMaLL-100, or **Auto** mode across installed packages.
 - Optional local translated audio for installed and independently reviewed Sherpa-ONNX voice packs. **Languages → Spoken translated audio** lists optional packs, calculates their estimated download/storage use, and keeps installation, readiness and the visitor on/off control together. Normal setup downloads no voice weights. The catalogue covers Catalan, Spanish, French, Kazakh, Latvian, Nepali, Dutch, Slovenian, Swedish, Ukrainian and Mandarin for both Chinese caption scripts. A viewer can select **Listen** to hear finalized translated cues; one generated cue is shared by every listener using that language. English, unavailable voices, invalid/silent output and sensitive/private moments do not produce translated audio. See [spoken-language model notices](docs/legal/SPOKEN_LANGUAGE_MODELS.md).
-- v0.7.0 introduced real Faster-Whisper word timestamps and confidence, guarded weak words at the captured-audio edge, timestamp-driven removal of sealed audio, correction-in-place, and Responsive Context translation. v0.7.2 added updater recovery and operator clarity. v0.7.3 prevents silence-only or low-confidence Whisper hypotheses from replacing the last speech-backed caption. v0.7.4 applies Room Display's calmer confirmed-prefix presentation policy to OBS and strengthens operator security. v0.7.5 added the optional, demand-driven translated-audio layer without placing speech generation in the caption or translation path. v0.7.6 retains that baseline and adds a safer Service Context hybrid: deterministic temporary corrections are the default, always-on Bible-reference formatting remains independent of notes, and direct Whisper assistance is an explicitly enabled experimental option limited to two terms.
+- Optional Service Context preparation with deterministic temporary corrections, independent Bible-reference formatting, and an explicitly enabled experimental Whisper-assistance mode limited to two selected terms.
 - Local HTTPS helper scripts for testing and managed-device deployments.
 - macOS, Windows, and Linux setup/start support, permission repair/password reset, and macOS LaunchAgent helper scripts.
 
@@ -188,7 +183,7 @@ More detail: [docs/linux.md](docs/linux.md).
 
 ## Recorded Sermon Testing
 
-v0.7.6 advances service metrics to schema 13. Schema 12 added text-free audio-callback stall, stream-restart and failed-restart counts; schema 13 adds privacy-safe Service Context mode and count fields without retaining notes or terms. Reports continue to identify cue-engine v5 and the `silero_endpoint_progress_publication_guard_v3` strategy, including text-free counts for low-confidence hypotheses, suppressed post-speech hypotheses, speech-bounded inference passes, and total trailing silence removed before recognition. Existing word-timestamp, edge-guard, cadence, translation, cue, queue, shutdown, and resource measurements remain available. Authenticated diagnostics also show text-free translated-audio availability, listener, queue, drop, and synthesis timing information. The downloadable service report retains no audio, recognition timestamps, confidence values, caption text, translation text, generated speech, sermon notes, or context terms. Follow [docs/recorded-sermon-testing.md](docs/recorded-sermon-testing.md).
+Church Cap uses service-metrics schema 13. It records privacy-safe Service Context counts alongside text-free audio-callback recovery, word-timestamp, edge-guard, cadence, translation, cue, queue, shutdown, and resource measurements. Authenticated diagnostics also show text-free translated-audio availability, listener, queue, drop, and synthesis timing information. The downloadable service report retains no audio, recognition timestamps, confidence values, caption text, translation text, generated speech, sermon notes, or context terms. Follow [docs/recorded-sermon-testing.md](docs/recorded-sermon-testing.md).
 
 ## Normal Use
 

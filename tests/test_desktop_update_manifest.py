@@ -39,7 +39,7 @@ class DesktopUpdateManifestTests(unittest.TestCase):
             temporary = Path(directory)
             result = self.run_generator(
                 temporary,
-                "https://github.com/Church-Cap/Live-Church-Captions/releases/download/macos-v0.8.1/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz",
+                "https://github.com/Church-Cap/Live-Church-Captions/releases/download/v0.8.1/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz",
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             manifest = json.loads(
@@ -49,9 +49,27 @@ class DesktopUpdateManifestTests(unittest.TestCase):
             self.assertEqual(manifest["signature"], "signed-payload")
             self.assertTrue(
                 manifest["url"].startswith(
-                    "https://github.com/Church-Cap/Live-Church-Captions/releases/download/macos-v0.8.1/"
+                    "https://github.com/Church-Cap/Live-Church-Captions/releases/download/v0.8.1/"
                 )
             )
+
+    def test_rejects_old_platform_prefixed_release_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_generator(
+                Path(directory),
+                "https://github.com/Church-Cap/Live-Church-Captions/releases/download/macos-v0.8.1/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unified v0.8.1 release tag", result.stderr)
+
+    def test_rejects_release_tag_that_does_not_match_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_generator(
+                Path(directory),
+                "https://github.com/Church-Cap/Live-Church-Captions/releases/download/v0.8.2/Church-Cap-v0.8.2-macOS-Apple-Silicon.app.tar.gz",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unified v0.8.1 release tag", result.stderr)
 
     def test_rejects_artifacts_outside_the_church_cap_release(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

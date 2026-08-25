@@ -8,6 +8,7 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 use crate::lifecycle::EngineSupervisor;
 
 const UPDATE_EVENT: &str = "church-cap://update-progress";
+const UPDATER_PUBLIC_KEY_ID: &str = "BF1E020A4490108A";
 
 #[derive(Clone)]
 pub struct UpdateCoordinator {
@@ -110,7 +111,7 @@ enum QueryError {
 async fn query_update(app: &AppHandle) -> Result<Option<Update>, QueryError> {
     let updater = app.updater().map_err(|error| {
         QueryError::Other(format!(
-            "Church Cap could not initialise signed updates: {error}"
+            "Church Cap could not initialise signed updates with trust root {UPDATER_PUBLIC_KEY_ID}: {error}"
         ))
     })?;
     updater.check().await.map_err(|error| match error {
@@ -256,6 +257,13 @@ pub async fn install_update(
 
 #[cfg(test)]
 mod tests {
+    use super::UPDATER_PUBLIC_KEY_ID;
+
+    #[test]
+    fn updater_trust_root_identity_is_auditable() {
+        assert_eq!(UPDATER_PUBLIC_KEY_ID, "BF1E020A4490108A");
+    }
+
     #[test]
     fn the_plugin_missing_release_error_is_distinct_from_verification_errors() {
         let missing = tauri_plugin_updater::Error::ReleaseNotFound;

@@ -2,17 +2,17 @@
 
 Church Cap is an open-source, local-first live caption application for churches. It listens to one audio input, transcribes speech locally, and publishes captions to phones, tablets, room displays, and OBS browser sources over the local network.
 
-This document describes the current alpha architecture.
+This document describes the current browser-first architecture.
 
 ## Current Release
 
-Version: `v0.8.0` development
+Version: `v0.8.0`
 
-Status: controlled local church testing. Church Cap is open-source software, not a compliance-certified service, and churches remain responsible for their own privacy, safeguarding, accessibility, copyright, and operational policies.
+Status: release candidate. The final Apple Silicon macOS and Windows x64 applications have passed project-owner clean-machine testing. Church Cap is open-source software, not a compliance-certified service, and churches remain responsible for their own privacy, safeguarding, accessibility, copyright, and operational policies.
 
 ## Deployment Model
 
-Church Cap v0.8.0 starts from the v0.7.6 product baseline and adds a modular signed-desktop distribution layer. The existing FastAPI application and browser UI remain shared. A stable dual-port engine entry point, typed source/packaged platform contracts, immutable resource boundary, and future thin native supervisor provide lifecycle, recovery, update, and installer integration without forking the caption product. The deterministic Service Context and optional translated-audio behaviour retained from v0.7.6 remain subject to their existing acceptance boundaries.
+Church Cap v0.8.0 adds a modular desktop distribution layer around the shared FastAPI application and browser UI. A stable dual-port engine entry point, typed source/packaged platform contracts, immutable resource boundary, and thin native supervisor provide lifecycle, recovery, update, and installer integration without forking the caption product. Deterministic Service Context and optional translated audio remain part of the shared browser application.
 
 Translated audio is an optional accessibility layer, not a replacement for captions. Operators choose, install, check and enable it from **Languages → Spoken translated audio**. Normal setup downloads no voice weights; the GUI shows per-pack and selected-total size estimates before an authenticated operator starts installation while captions are stopped. It remains disabled when no reviewed voice pack is installed, never appears for English, is suppressed during Sensitive moment mode, and does not store generated audio or translated wording. Audience playback uses one explicitly activated HTML media element so mobile browsers can retain playback permission and expose native media controls where supported. Invalid or silent generated samples are not delivered. See [Local translated audio](../translated-audio.md) and [Optional Spoken-Language Model Notices](../legal/SPOKEN_LANGUAGE_MODELS.md).
 
@@ -26,9 +26,9 @@ This keeps one codebase while allowing the appliance shell, kiosk setup, and upd
 
 Roadmap detail: [ROADMAP_TO_V1.md](ROADMAP_TO_V1.md).
 
-v0.8.0 implementation status: [V0.8.0_IMPLEMENTATION.md](V0.8.0_IMPLEMENTATION.md). Cross-platform boundaries: [CROSS_PLATFORM_ARCHITECTURE.md](CROSS_PLATFORM_ARCHITECTURE.md). Release procedure: [DESKTOP_UPDATE_RELEASE_RUNBOOK.md](DESKTOP_UPDATE_RELEASE_RUNBOOK.md). Retained v0.7.6 baseline: [V0.7.6_IMPLEMENTATION.md](V0.7.6_IMPLEMENTATION.md).
+v0.8.0 implementation record: [V0.8.0_IMPLEMENTATION.md](V0.8.0_IMPLEMENTATION.md). Cross-platform boundaries: [CROSS_PLATFORM_ARCHITECTURE.md](CROSS_PLATFORM_ARCHITECTURE.md). Release procedure: [DESKTOP_UPDATE_RELEASE_RUNBOOK.md](DESKTOP_UPDATE_RELEASE_RUNBOOK.md).
 
-v0.7.6 retains the Room Display/OBS presentation policy, focused security and translation-installation hardening from v0.7.4, and the optional translated-audio layer introduced in v0.7.5. Audience-phone caption timing, translation scheduling and appliance identity remain unchanged. Service metrics advance through schema 12 for privacy-safe audio-callback recovery counts and schema 13 for text-free Service Context mode, hint, prompt-token, reference and correction counts. TTS readiness and text-free queue/latency state remain available only through authenticated diagnostics.
+The current product retains the shared Room Display/OBS presentation policy, focused security and translation-installation hardening, and the optional translated-audio layer. Service metrics use schema 12 for privacy-safe audio-callback recovery counts and schema 13 for text-free Service Context mode, hint, prompt-token, reference, and correction counts. TTS readiness and text-free queue/latency state remain available only through authenticated diagnostics.
 
 ## Project Goals
 
@@ -65,7 +65,7 @@ Church microphones
 - `/docs/church-notice` — operator-only suggested church notice wording.
 - `/docs/disclaimer` — operator-only disclaimer notes.
 - Operator **Diagnostics** section — operator-only local support export with confirmation, system specs, runtime status, metrics, and redacted updater/CUDA logs.
-- v0.7.6 retains the v0.7.3 diagnostics, adds audio-callback stall, stream-restart and failed-restart counts in service-metrics schema 12, and adds text-free Service Context comparison fields in schema 13. Schema 9, 10, 11 and 12 summaries remain readable after upgrade. The broader diagnostics export also includes the existing redacted update log, which the update-failure panel directs operators to download. Reports contain numeric counts, bounded non-identifying modes and distributions only; they never retain audio, recognition spans, word times or confidence, device metadata, captions, translations, transcripts, sermon notes, context terms, glossary contents, paths, network identifiers, or operator data.
+- Diagnostics include audio-callback stall, stream-restart, and failed-restart counts in service-metrics schema 12, plus text-free Service Context comparison fields in schema 13. Schema 9, 10, 11, and 12 summaries remain readable after upgrade. The broader diagnostics export also includes the redacted update log, which the update-failure panel directs operators to download. Reports contain numeric counts, bounded non-identifying modes, and distributions only; they never retain audio, recognition spans, word times or confidence, device metadata, captions, translations, transcripts, sermon notes, context terms, glossary contents, paths, network identifiers, or operator data.
 - Operator **Updates** section — operator-only GitHub release-tag check, confirmation, integrity-checked in-place update, rollback backup, restart, and reconnect flow.
 - `/service-leader` — restricted service-leader controls reached through a one-use QR pairing flow on the operator port.
 - `/api/diagnostics/export` — local diagnostics JSON export, operator login and local computer required.

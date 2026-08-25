@@ -28,6 +28,7 @@ const tauriConfig = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.j
 const previewConfig = JSON.parse(await readFile(new URL('../src-tauri/tauri.preview.conf.json', import.meta.url), 'utf8'));
 const packageConfig = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const updaterPublicKey = (await readFile(new URL('../../packaging/updater/church-cap-updater-public.key', import.meta.url), 'utf8')).trim();
+const updaterPublicKeyText = Buffer.from(updaterPublicKey, 'base64').toString('utf8');
 
 test('desktop identity and centred control window remain stable', () => {
   assert.equal(tauriConfig.productName, 'Church Cap');
@@ -133,6 +134,7 @@ test('macOS DMG uses the branded drag-to-Applications layout', async () => {
   assert.ok((await stat(background)).size > 0, 'multi-resolution DMG background should exist');
   assert.ok((await stat(retinaBackground)).size > 0, 'Retina DMG background should exist');
   assert.match(dmgBuilder, /generate-macos-dmg-background\.swift/);
+  assert.match(dmgBuilder, /\/usr\/bin\/xcrun swift .*generate-macos-dmg-background\.swift/);
   assert.match(dmgBuilder, /tiffutil -cathidpicheck/);
   assert.match(dmgBuilder, /set background picture of viewOptions/);
   assert.match(dmgBuilder, /set position of item "Church Cap\.app"[\s\S]*\{165, 245\}/);
@@ -315,6 +317,10 @@ test('signed updater remains Rust-owned and protects live captions', () => {
   assert.equal(tauriConfig.bundle.createUpdaterArtifacts, true);
   assert.match(tauriConfig.plugins.updater.pubkey, /^[A-Za-z0-9+/=]+$/);
   assert.equal(tauriConfig.plugins.updater.pubkey, updaterPublicKey);
+  const publicKeyId = updaterPublicKeyText.match(/minisign public key: ([A-F0-9]{16})/)?.[1];
+  const rustKeyId = rustUpdater.match(/UPDATER_PUBLIC_KEY_ID: &str = "([A-F0-9]{16})"/)?.[1];
+  assert.equal(publicKeyId, 'BF1E020A4490108A');
+  assert.equal(rustKeyId, publicKeyId);
   assert.deepEqual(tauriConfig.plugins.updater.endpoints, [
     'https://raw.githubusercontent.com/Church-Cap/Live-Church-Captions/main/updates/desktop/{{target}}-{{arch}}/latest.json',
   ]);

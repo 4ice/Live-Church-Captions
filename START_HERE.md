@@ -6,9 +6,11 @@ Developers continuing the native desktop work should begin with [docs/project/CR
 
 ## Recommended Downloads
 
-- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/macos-v0.8.0): install the notarized DMG in Applications.
-- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/windows-v0.8.0): run the setup executable. The current Windows release is unsigned, so verify its published SHA-256 before accepting any SmartScreen warning.
-- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/linux-v0.8.0): verify and extract `Church-Cap-Linux-CLI.tar.gz`, then run `bash setup-linux.sh`.
+- [Mac — Apple Silicon](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): install the notarized DMG in Applications.
+- [Windows — 64-bit](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): run the setup executable. The current Windows release is unsigned, so verify its published SHA-256 before accepting any SmartScreen warning.
+- [Linux — 64-bit CLI](https://github.com/Church-Cap/Live-Church-Captions/releases/tag/v0.8.0): verify and extract `Church-Cap-Linux-CLI.tar.gz`, then run `bash setup-linux.sh`.
+
+Mac, Windows, and Linux downloads are published as assets of the same versioned release.
 
 The source-folder instructions below remain available for contributors and advanced installations. Mac and Windows users should normally use the native downloads above.
 
@@ -138,7 +140,7 @@ The service leader can share the audience QR code by generating a temporary phon
 
 ## Optional Translated Audio Pilot
 
-v0.7.6 retains the optional translated-caption audio introduced in v0.7.5. A visitor can select **Listen** after the church installs a reviewed voice pack. In **Operator → Languages → Spoken Translated Audio**, stop captions, choose only the language packs the church needs, review the estimated size, and select **Install selected languages**. Normal setup downloads no voice weights. The same section reports readiness and lets the operator make spoken audio available to visitors. English never shows the control, and ordinary text captions continue if speech generation is unavailable. Traditional Chinese currently uses Mandarin speech, not Cantonese. See [docs/translated-audio.md](docs/translated-audio.md) and the [voice-model notices](docs/legal/SPOKEN_LANGUAGE_MODELS.md) before live use.
+A visitor can select **Listen** after the church installs a reviewed voice pack. In **Operator → Languages → Spoken Translated Audio**, stop captions, choose only the language packs the church needs, review the estimated size, and select **Install selected languages**. Normal setup downloads no voice weights. The same section reports readiness and lets the operator make spoken audio available to visitors. English never shows the control, and ordinary text captions continue if speech generation is unavailable. Traditional Chinese currently uses Mandarin speech, not Cantonese. See [docs/translated-audio.md](docs/translated-audio.md) and the [voice-model notices](docs/legal/SPOKEN_LANGUAGE_MODELS.md) before live use.
 
 ## If Something Goes Wrong
 

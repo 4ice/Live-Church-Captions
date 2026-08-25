@@ -47,7 +47,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFEQTkwODZGOEUyNEVCMkYKUldRdjZ5U09id2lwcldyeVY1N1MxellORVg3c0xjRXdmSzFlQ0xYTFJDVUp4OFQ2SWFIc3lpT2gK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJGMUUwMjBBNDQ5MDEwOEEKUldTS0VKQkVDZ0lldjl6V1NqYzB2N1A3V2JtbEFqZEI2azIrQ1FrOHRidGQvRDBGTEk4T2I3R08K",
       "endpoints": [
         "https://raw.githubusercontent.com/Church-Cap/Live-Church-Captions/main/updates/desktop/{{target}}-{{arch}}/latest.json"
       ],

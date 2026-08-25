@@ -5,7 +5,7 @@ The installed Tauri supervisor reads one independently versioned manifest:
 - `darwin-aarch64/latest.json` for the Apple Silicon Mac release;
 - `windows-x86_64/latest.json` for the Windows x64 release.
 
-This permits separate `macos-vX.Y.Z` and `windows-vX.Y.Z` GitHub Releases while keeping one application version scheme. Linux and Appliance releases continue to use their CLI update route and must not publish a Tauri desktop manifest.
+Mac, Windows, and Linux artifacts are published together in one `vX.Y.Z` GitHub Release. The desktop manifests remain separate so each installed wrapper downloads only its own signed artifact. Linux and Appliance releases continue to use their CLI update route and must not publish a Tauri desktop manifest.
 
 `latest.json` files are release outputs, not hand-written metadata. Generate one only after its platform artifact and `.sig` exist:
 
@@ -13,7 +13,7 @@ This permits separate `macos-vX.Y.Z` and `windows-vX.Y.Z` GitHub Releases while 
 python3 scripts/release/generate-desktop-update-manifest.py \
   --version 0.8.1 \
   --target darwin-aarch64 \
-  --artifact-url https://github.com/Church-Cap/Live-Church-Captions/releases/download/macos-v0.8.1/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz \
+  --artifact-url https://github.com/Church-Cap/Live-Church-Captions/releases/download/v0.8.1/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz \
   --signature-file dist/Church-Cap-v0.8.1-macOS-Apple-Silicon.app.tar.gz.sig \
   --notes-file docs/project/V0.8.1_RELEASE_NOTES.md
 ```

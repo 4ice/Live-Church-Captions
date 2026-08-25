@@ -36,12 +36,18 @@ def validated_version(value: str) -> str:
     return value.strip().removeprefix("v")
 
 
-def validated_release_url(value: str) -> str:
+def validated_release_url(value: str, version: str) -> str:
     parsed = urlparse(value)
     if parsed.scheme != "https" or parsed.netloc != "github.com":
         raise ValueError("artifact URL must use https://github.com")
     if not parsed.path.startswith(RELEASE_URL_PREFIX):
         raise ValueError("artifact URL must belong to the Church Cap GitHub Releases download path")
+    release_path = parsed.path.removeprefix(RELEASE_URL_PREFIX)
+    tag, separator, asset_name = release_path.partition("/")
+    if tag != f"v{version}":
+        raise ValueError(f"artifact URL must use the unified v{version} release tag")
+    if not separator or not asset_name or "/" in asset_name:
+        raise ValueError("artifact URL must name one GitHub Release asset")
     if parsed.query or parsed.fragment:
         raise ValueError("artifact URL must not contain a query or fragment")
     return value
@@ -70,7 +76,7 @@ def main() -> int:
     args = parser().parse_args()
     try:
         version = validated_version(args.version)
-        artifact_url = validated_release_url(args.artifact_url)
+        artifact_url = validated_release_url(args.artifact_url, version)
         published_at = validated_timestamp(args.published_at)
         signature = read_signature(args.signature_file)
     except (OSError, UnicodeError, ValueError) as error:
