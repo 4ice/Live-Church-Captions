@@ -430,3 +430,8 @@ English because its input strings are English. Non-English recognition bypasses
 English-specific prompts, glossary/reference/context corrections and profanity
 filtering. Translation resources must support the selected language pair; adding
 a source language does not install translation packs or voice packs.
+
+On Apple Metal, `app/transcription/whisper_mps.py` adapts Whisper 20250625's
+word-alignment DTW fallback. It transfers the alignment matrix to CPU before
+Whisper converts it to float64, which MPS does not support. Model inference stays
+on MPS, word timestamps remain enabled, and CPU/CUDA alignment paths are unchanged.
